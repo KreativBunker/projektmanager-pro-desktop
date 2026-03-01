@@ -1,0 +1,26 @@
+LIZENZVEREINBARUNG – ProjektManager Pro Desktop App
+
+Copyright (c) 2026 KreativBunker. Alle Rechte vorbehalten.
+
+Durch die Installation und Nutzung dieser Software stimmen Sie den folgenden
+Bedingungen zu:
+
+1. NUTZUNGSRECHT
+   Diese Software darf nur in Verbindung mit einer gültigen ProjektManager Pro
+   Lizenz verwendet werden. Die Desktop-App ist ein Zugangswerkzeug zu Ihrer
+   bestehenden ProjektManager Pro Installation.
+
+2. EINSCHRÄNKUNGEN
+   Es ist nicht gestattet, die Software zu dekompilieren, zu modifizieren oder
+   an Dritte weiterzugeben, die keine gültige Lizenz besitzen.
+
+3. HAFTUNGSAUSSCHLUSS
+   Die Software wird "wie besehen" bereitgestellt. Der Autor übernimmt keine
+   Haftung für Schäden, die durch die Nutzung entstehen.
+
+4. DATENSCHUTZ
+   Die Desktop-App speichert Ihre Einstellungen (Server-URL, Download-Pfad)
+   ausschließlich lokal auf Ihrem Gerät. Es werden keine Daten an Dritte
+   übermittelt.
+
+Bei Fragen wenden Sie sich an: support@kreativbunker.de
