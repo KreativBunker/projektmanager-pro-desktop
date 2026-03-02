@@ -56,7 +56,7 @@ function openSetupWizard() {
 
   setupWindow = new BrowserWindow({
     width: 520,
-    height: 640,
+    height: 720,
     resizable: false,
     maximizable: false,
     title: 'Setup – ProjektManager Pro',
@@ -203,7 +203,7 @@ function openConfigWindow() {
 
   configWindow = new BrowserWindow({
     width: 520,
-    height: 460,
+    height: 540,
     resizable: false,
     title: 'Einstellungen – ProjektManager Pro',
     icon: getIconPath(),
@@ -555,6 +555,21 @@ ipcMain.handle('open-folder', async (_event, folderPath) => {
   }
   console.warn('[open-folder] Nicht gefunden:', folderPath);
   return `Ordner nicht gefunden: ${folderPath}`;
+});
+
+ipcMain.handle('open-nas-folder', async (_event, relativePath) => {
+  const synologyDrivePath = store.get('synologyDrivePath');
+  if (!synologyDrivePath || !relativePath) {
+    console.warn('[open-nas-folder] Synology Drive Pfad nicht konfiguriert oder relativer Pfad fehlt.');
+    return 'Synology Drive Pfad nicht konfiguriert.';
+  }
+  const fullPath = path.join(synologyDrivePath, relativePath);
+  console.log('[open-nas-folder] Pfad:', fullPath);
+  if (fs.existsSync(fullPath)) {
+    return shell.openPath(fullPath);
+  }
+  console.warn('[open-nas-folder] Nicht gefunden:', fullPath);
+  return `Ordner nicht gefunden: ${fullPath}`;
 });
 
 ipcMain.handle('show-in-folder', (_event, filePath) => {

@@ -7,6 +7,7 @@ const configPath = path.join(app.getPath('userData'), 'config.json');
 const defaults = {
   siteUrl: '',
   downloadPath: app.getPath('downloads'),
+  synologyDrivePath: '',
   openFilesLocally: true,
   windowBounds: { width: 1280, height: 800 }
 };

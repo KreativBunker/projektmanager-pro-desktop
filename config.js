@@ -3,19 +3,27 @@
 
   const elUrl = document.getElementById('siteUrl');
   const elPath = document.getElementById('downloadPath');
+  const elSynology = document.getElementById('synologyDrivePath');
   const elOpen = document.getElementById('openFilesLocally');
   const elStatus = document.getElementById('status');
   const btnDir = document.getElementById('btnSelectDir');
+  const btnSynology = document.getElementById('btnSelectSynology');
   const btnSave = document.getElementById('btnSave');
 
   // Populate current values
   elUrl.value = config.siteUrl || '';
   elPath.value = config.downloadPath || '';
+  elSynology.value = config.synologyDrivePath || '';
   elOpen.checked = config.openFilesLocally !== false;
 
   btnDir.addEventListener('click', async () => {
     const dir = await window.pmpDesktop.selectDirectory();
     if (dir) elPath.value = dir;
+  });
+
+  btnSynology.addEventListener('click', async () => {
+    const dir = await window.pmpDesktop.selectDirectory();
+    if (dir) elSynology.value = dir;
   });
 
   btnSave.addEventListener('click', async () => {
@@ -34,6 +42,7 @@
       await window.pmpDesktop.saveConfig({
         siteUrl: siteUrl,
         downloadPath: elPath.value,
+        synologyDrivePath: elSynology.value,
         openFilesLocally: elOpen.checked
       });
       elStatus.textContent = 'Gespeichert! App wird geladen…';

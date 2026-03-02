@@ -4,6 +4,7 @@
 
   const elUrl = document.getElementById('setupUrl');
   const elPath = document.getElementById('setupDownloadPath');
+  const elSynology = document.getElementById('setupSynologyPath');
   const elAutoOpen = document.getElementById('setupAutoOpen');
   const elAutoStart = document.getElementById('setupAutoStart');
   const elConnTest = document.getElementById('connTest');
@@ -11,6 +12,7 @@
 
   // Pre-fill defaults
   elPath.value = config.downloadPath || '';
+  elSynology.value = config.synologyDrivePath || '';
   elAutoOpen.checked = config.openFilesLocally !== false;
 
   // Pre-fill server URL if passed via --site-url argument (e.g. from a custom installer)
@@ -79,15 +81,26 @@
     if (dir) elPath.value = dir;
   });
 
+  document.getElementById('btnSetupSynology').addEventListener('click', async () => {
+    const dir = await window.pmpDesktop.selectDirectory();
+    if (dir) elSynology.value = dir;
+  });
+
   document.getElementById('btnStep2Back').addEventListener('click', () => showStep(0));
   document.getElementById('btnStep2Next').addEventListener('click', () => {
     // Show summary
-    elSummary.innerHTML = [
+    const summaryItems = [
       '<strong>Server:</strong> ' + escapeHtml(elUrl.value),
-      '<strong>Downloads:</strong> ' + escapeHtml(elPath.value),
+      '<strong>Downloads:</strong> ' + escapeHtml(elPath.value)
+    ];
+    if (elSynology.value) {
+      summaryItems.push('<strong>Synology Drive:</strong> ' + escapeHtml(elSynology.value));
+    }
+    summaryItems.push(
       '<strong>Auto-Öffnen:</strong> ' + (elAutoOpen.checked ? 'Ja' : 'Nein'),
       '<strong>Autostart:</strong> ' + (elAutoStart.checked ? 'Ja' : 'Nein')
-    ].join('<br>');
+    );
+    elSummary.innerHTML = summaryItems.join('<br>');
     showStep(2);
   });
 
@@ -97,6 +110,7 @@
     await window.pmpDesktop.saveConfig({
       siteUrl: elUrl.value.trim(),
       downloadPath: elPath.value,
+      synologyDrivePath: elSynology.value,
       openFilesLocally: elAutoOpen.checked,
       autoStart: elAutoStart.checked,
       setupCompleted: true
