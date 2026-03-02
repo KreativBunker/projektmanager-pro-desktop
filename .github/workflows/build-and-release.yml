@@ -42,9 +42,28 @@ jobs:
       - name: Generate icons
         run: node scripts/generate-icons.js
 
+      # ── macOS: Zertifikat importieren ──
+      - name: Import macOS Code Signing Certificate
+        if: matrix.platform == 'mac' && env.CSC_LINK != ''
+        env:
+          CSC_LINK: ${{ secrets.MAC_CERTIFICATE_P12 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+        run: echo "macOS Code-Signing-Zertifikat wird von electron-builder automatisch verwendet."
+
+      # ── Build mit Signierung und Notarisierung ──
       - name: Build (${{ matrix.platform }})
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS Code Signing
+          CSC_LINK: ${{ secrets.MAC_CERTIFICATE_P12 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+          # macOS Notarization
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows Code Signing
+          WIN_CSC_LINK: ${{ secrets.WIN_CERTIFICATE_P12 }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CERTIFICATE_PASSWORD }}
         run: npx electron-builder --${{ matrix.platform }} --publish never
 
       - name: Upload artifacts
