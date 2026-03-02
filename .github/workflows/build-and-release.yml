@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-13
+          - os: macos-latest
             platform: mac
           - os: windows-latest
             platform: win
@@ -53,6 +53,13 @@ jobs:
 
       - name: Generate icons
         run: node scripts/generate-icons.js
+
+      # ── macOS: Spotlight deaktivieren, damit hdiutil detach nicht blockiert ──
+      - name: Disable Spotlight indexing (macOS)
+        if: matrix.platform == 'mac'
+        run: |
+          sudo mdutil -a -i off
+          sudo launchctl bootout system/com.apple.metadata.mds || true
 
       # ── macOS: Zertifikat importieren ──
       - name: Import macOS Code Signing Certificate
