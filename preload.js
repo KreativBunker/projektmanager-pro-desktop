@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('pmpDesktop', {
   // File system
   selectDirectory: () => ipcRenderer.invoke('select-directory'),
   openFile: (filePath) => ipcRenderer.invoke('open-file', filePath),
+  openFolder: (folderPath) => ipcRenderer.invoke('open-folder', folderPath),
   showInFolder: (filePath) => ipcRenderer.invoke('show-in-folder', filePath),
 
   // Info

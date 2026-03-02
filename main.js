@@ -512,16 +512,31 @@ ipcMain.handle('select-directory', async () => {
 });
 
 ipcMain.handle('open-file', async (_event, filePath) => {
+  console.log('[open-file] Pfad:', filePath);
   if (fs.existsSync(filePath)) {
     return shell.openPath(filePath);
   }
-  return 'Datei nicht gefunden';
+  console.warn('[open-file] Nicht gefunden:', filePath);
+  return `Datei nicht gefunden: ${filePath}`;
+});
+
+ipcMain.handle('open-folder', async (_event, folderPath) => {
+  console.log('[open-folder] Pfad:', folderPath);
+  if (fs.existsSync(folderPath)) {
+    return shell.openPath(folderPath);
+  }
+  console.warn('[open-folder] Nicht gefunden:', folderPath);
+  return `Ordner nicht gefunden: ${folderPath}`;
 });
 
 ipcMain.handle('show-in-folder', (_event, filePath) => {
+  console.log('[show-in-folder] Pfad:', filePath);
   if (fs.existsSync(filePath)) {
     shell.showItemInFolder(filePath);
+    return '';
   }
+  console.warn('[show-in-folder] Nicht gefunden:', filePath);
+  return `Datei nicht gefunden: ${filePath}`;
 });
 
 // ── Helpers ───────────────────────────────────────────────────
