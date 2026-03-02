@@ -67,22 +67,11 @@
     "dmg": {
       "sign": false,
       "backgroundColor": "#f5f5f7",
+      "iconSize": 80,
       "window": {
         "width": 540,
         "height": 380
       },
-      "contents": [
-        {
-          "x": 140,
-          "y": 180
-        },
-        {
-          "x": 400,
-          "y": 180,
-          "type": "link",
-          "path": "/Applications"
-        }
-      ],
       "title": "ProjektManager-Pro"
     },
     "win": {
