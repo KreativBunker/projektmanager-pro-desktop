@@ -21,6 +21,7 @@
     "appId": "com.projektmanager.pro",
     "productName": "ProjektManager Pro",
     "copyright": "Copyright © 2026 KreativBunker",
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -103,6 +104,7 @@
       ]
     },
     "nsis": {
+      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}",
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
