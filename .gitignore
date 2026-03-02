@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.dmg
+*.exe
+*.AppImage
+*.deb
+*.rpm
+*.snap
+*.zip
+build/icon.png
+build/icon.ico
+build/icon.icns
+build/icons/*.png
+assets/icon.png
