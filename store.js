@@ -9,6 +9,8 @@ const defaults = {
   downloadPath: app.getPath('downloads'),
   synologyDrivePath: '',
   openFilesLocally: true,
+  notificationsEnabled: true,
+  notificationSoundEnabled: true,
   windowBounds: { width: 1280, height: 800 }
 };
 

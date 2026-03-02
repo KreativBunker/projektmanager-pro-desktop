@@ -16,6 +16,14 @@ contextBridge.exposeInMainWorld('pmpDesktop', {
   openNasFolder: (relativePath) => ipcRenderer.invoke('open-nas-folder', relativePath),
   showInFolder: (filePath) => ipcRenderer.invoke('show-in-folder', filePath),
 
+  // Notifications
+  showNotification: (data) => ipcRenderer.invoke('show-notification', data),
+  updateBadge: (count) => ipcRenderer.invoke('update-badge', count),
+  getNotificationSettings: () => ipcRenderer.invoke('get-notification-settings'),
+  onNotificationNavigate: (callback) => {
+    ipcRenderer.on('notification-navigate', (_event, data) => callback(data));
+  },
+
   // Info
   isDesktopApp: true
 });
