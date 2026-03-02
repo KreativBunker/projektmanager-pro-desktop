@@ -37,7 +37,7 @@
     ],
     "mac": {
       "category": "public.app-category.business",
-      "icon": "build/icon.icns",
+      "icon": "build/icon.png",
       "darkModeSupport": true,
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
