@@ -38,6 +38,35 @@ fi
 
 echo -e "${GREEN}Node.js $(node -v) gefunden.${NC}"
 
+# macOS Code Signing & Notarisierung prüfen
+if [ "$(uname -s)" = "Darwin" ]; then
+    echo ""
+    if [ -z "$CSC_LINK" ]; then
+        echo -e "${YELLOW}Hinweis: Kein Code-Signing-Zertifikat konfiguriert.${NC}"
+        echo "  Die App wird NICHT signiert – macOS Gatekeeper wird warnen."
+        echo ""
+        echo "  Für signierte Builds setze folgende Umgebungsvariablen:"
+        echo "    CSC_LINK          – Pfad zur .p12 Zertifikatsdatei (oder base64)"
+        echo "    CSC_KEY_PASSWORD  – Passwort des Zertifikats"
+        echo ""
+    else
+        echo -e "${GREEN}Code-Signing-Zertifikat gefunden.${NC}"
+    fi
+
+    if [ -z "$APPLE_ID" ] || [ -z "$APPLE_TEAM_ID" ]; then
+        echo -e "${YELLOW}Hinweis: Keine Notarisierungs-Credentials konfiguriert.${NC}"
+        echo "  Die App wird NICHT notarisiert – macOS Gatekeeper wird warnen."
+        echo ""
+        echo "  Für notarisierte Builds setze folgende Umgebungsvariablen:"
+        echo "    APPLE_ID           – Deine Apple-ID (E-Mail)"
+        echo "    APPLE_ID_PASSWORD  – App-spezifisches Passwort"
+        echo "    APPLE_TEAM_ID      – Team-ID aus dem Apple Developer Portal"
+        echo ""
+    else
+        echo -e "${GREEN}Notarisierungs-Credentials gefunden.${NC}"
+    fi
+fi
+
 # Abhängigkeiten installieren
 echo ""
 echo "Installiere Abhängigkeiten..."
@@ -105,3 +134,15 @@ echo "  $PROJECT_DIR/dist/"
 echo ""
 ls -lh "$PROJECT_DIR/dist/" 2>/dev/null | grep -E '\.(dmg|exe|AppImage|deb|rpm|zip)$' || echo "  (Dateien werden generiert...)"
 echo ""
+
+# macOS: Signierung-Status anzeigen
+if [ "$(uname -s)" = "Darwin" ] && [ "$PLATFORM" = "mac" ]; then
+    APP_PATH=$(find "$PROJECT_DIR/dist/mac"* -name "*.app" -maxdepth 1 2>/dev/null | head -1)
+    if [ -n "$APP_PATH" ]; then
+        echo "Code-Signing-Status:"
+        codesign --verify --deep --strict "$APP_PATH" 2>&1 && \
+            echo -e "  ${GREEN}App ist korrekt signiert.${NC}" || \
+            echo -e "  ${YELLOW}App ist NICHT signiert.${NC}"
+        echo ""
+    fi
+fi
