@@ -29,7 +29,6 @@
       "config.html",
       "config.js",
       "store.js",
-      "updater.js",
       "assets/**/*"
     ],
     "mac": {
@@ -109,8 +108,9 @@
       "category": "Office"
     },
     "publish": {
-      "provider": "generic",
-      "url": ""
+      "provider": "github",
+      "owner": "KreativBunker",
+      "repo": "projektmanager-pro-desktop"
     }
   },
   "devDependencies": {
