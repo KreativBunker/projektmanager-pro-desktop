@@ -3,7 +3,6 @@
 // Wird automatisch nach dem Code-Signing durch electron-builder aufgerufen
 // ============================================================
 
-const { notarize } = require('@electron/notarize');
 const path = require('path');
 
 exports.default = async function notarizing(context) {
@@ -24,6 +23,9 @@ exports.default = async function notarizing(context) {
     console.log('  APPLE_TEAM_ID      – Team-ID aus dem Apple Developer Portal');
     return;
   }
+
+  // Lazy-load: nur importieren wenn tatsächlich notarisiert wird
+  const { notarize } = require('@electron/notarize');
 
   const appName = context.packager.appInfo.productFilename;
   const appPath = path.join(appOutDir, `${appName}.app`);
