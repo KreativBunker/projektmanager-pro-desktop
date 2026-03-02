@@ -358,74 +358,102 @@ function setupAutoStart() {
 
 // ── Auto-Updater ──────────────────────────────────────────────
 
+let autoUpdaterReady = false;
+let manualUpdateCheck = false;
+
+function initAutoUpdater() {
+  const { autoUpdater } = require('electron-updater');
+
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('update-available', (info) => {
+    const win = mainWindow || setupWindow;
+    if (!win) return;
+    dialog.showMessageBox(win, {
+      type: 'info',
+      title: 'Update verfügbar',
+      message: `Version ${info.version} ist verfügbar.`,
+      detail: 'Möchten Sie das Update jetzt herunterladen?',
+      buttons: ['Herunterladen', 'Später'],
+      defaultId: 0
+    }).then((result) => {
+      if (result.response === 0) {
+        autoUpdater.downloadUpdate();
+      }
+    });
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    if (manualUpdateCheck) {
+      const win = mainWindow || setupWindow;
+      if (win) {
+        dialog.showMessageBox(win, {
+          type: 'info',
+          title: 'Kein Update',
+          message: 'Sie verwenden bereits die neueste Version.'
+        });
+      }
+    }
+  });
+
+  autoUpdater.on('update-downloaded', () => {
+    const win = mainWindow || setupWindow;
+    if (!win) return;
+    dialog.showMessageBox(win, {
+      type: 'info',
+      title: 'Update bereit',
+      message: 'Das Update wurde heruntergeladen.',
+      detail: 'Die App wird jetzt neu gestartet, um das Update zu installieren.',
+      buttons: ['Jetzt neu starten', 'Später']
+    }).then((result) => {
+      if (result.response === 0) {
+        autoUpdater.quitAndInstall();
+      }
+    });
+  });
+
+  autoUpdater.on('error', (err) => {
+    if (manualUpdateCheck) {
+      const win = mainWindow || setupWindow;
+      if (win) {
+        dialog.showMessageBox(win, {
+          type: 'error',
+          title: 'Update-Fehler',
+          message: 'Beim Suchen nach Updates ist ein Fehler aufgetreten.',
+          detail: err ? err.message : 'Bitte prüfen Sie Ihre Internetverbindung.'
+        });
+      }
+    }
+  });
+
+  return autoUpdater;
+}
+
 function checkForUpdates(manual = false) {
   try {
     const { autoUpdater } = require('electron-updater');
 
-    autoUpdater.autoDownload = false;
-    autoUpdater.autoInstallOnAppQuit = true;
+    manualUpdateCheck = manual;
 
-    autoUpdater.on('update-available', (info) => {
-      const win = mainWindow || setupWindow;
-      if (!win) return;
-      dialog.showMessageBox(win, {
-        type: 'info',
-        title: 'Update verfügbar',
-        message: `Version ${info.version} ist verfügbar.`,
-        detail: 'Möchten Sie das Update jetzt herunterladen?',
-        buttons: ['Herunterladen', 'Später'],
-        defaultId: 0
-      }).then((result) => {
-        if (result.response === 0) {
-          autoUpdater.downloadUpdate();
-        }
-      });
-    });
+    if (!autoUpdaterReady) {
+      initAutoUpdater();
+      autoUpdaterReady = true;
+    }
 
-    autoUpdater.on('update-not-available', () => {
-      if (manual) {
-        const win = mainWindow || setupWindow;
-        if (win) {
-          dialog.showMessageBox(win, {
-            type: 'info',
-            title: 'Kein Update',
-            message: 'Sie verwenden bereits die neueste Version.'
-          });
-        }
-      }
-    });
-
-    autoUpdater.on('update-downloaded', () => {
-      const win = mainWindow || setupWindow;
-      if (!win) return;
-      dialog.showMessageBox(win, {
-        type: 'info',
-        title: 'Update bereit',
-        message: 'Das Update wurde heruntergeladen.',
-        detail: 'Die App wird jetzt neu gestartet, um das Update zu installieren.',
-        buttons: ['Jetzt neu starten', 'Später']
-      }).then((result) => {
-        if (result.response === 0) {
-          autoUpdater.quitAndInstall();
-        }
-      });
-    });
-
-    autoUpdater.on('error', () => {
-      // Silently ignore update errors in auto-check mode
+    autoUpdater.checkForUpdates().catch((err) => {
       if (manual) {
         const win = mainWindow || setupWindow;
         if (win) {
           dialog.showMessageBox(win, {
             type: 'error',
             title: 'Update-Fehler',
-            message: 'Beim Suchen nach Updates ist ein Fehler aufgetreten.'
+            message: 'Beim Suchen nach Updates ist ein Fehler aufgetreten.',
+            detail: err ? err.message : 'Bitte prüfen Sie Ihre Internetverbindung.'
           });
         }
       }
     });
-
-    autoUpdater.checkForUpdates();
   } catch (_) {
     // electron-updater not available in dev mode
   }
