@@ -54,7 +54,7 @@ jobs:
       - name: Build (${{ matrix.platform }})
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS Code Signing – wenn kein Zertifikat vorhanden, Auto-Discovery deaktivieren
+          # macOS Code Signing
           CSC_LINK: ${{ secrets.MAC_CERTIFICATE_P12 }}
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.MAC_CERTIFICATE_P12 != '' }}
@@ -65,7 +65,13 @@ jobs:
           # Windows Code Signing
           WIN_CSC_LINK: ${{ secrets.WIN_CERTIFICATE_P12 }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CERTIFICATE_PASSWORD }}
-        run: npx electron-builder --${{ matrix.platform }} --publish never
+        run: |
+          if [ "${{ matrix.platform }}" = "mac" ] && [ -z "$CSC_LINK" ]; then
+            echo "Kein Code-Signing-Zertifikat – baue ohne Signierung"
+            npx electron-builder --mac --config.mac.identity=null --publish never
+          else
+            npx electron-builder --${{ matrix.platform }} --publish never
+          fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
