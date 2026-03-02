@@ -83,8 +83,6 @@
       "shortcutName": "ProjektManager Pro",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
-      "installerHeader": "build/installer-header.bmp",
-      "installerSidebar": "build/installer-sidebar.bmp",
       "license": "build/license.txt",
       "language": "1031",
       "include": "build/installer.nsh",
