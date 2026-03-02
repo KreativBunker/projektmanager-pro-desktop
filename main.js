@@ -414,14 +414,18 @@ function initAutoUpdater() {
   });
 
   autoUpdater.on('error', (err) => {
+    console.error('[auto-updater] Fehler:', err ? err.message : 'Unbekannter Fehler');
     if (manualUpdateCheck) {
       const win = mainWindow || setupWindow;
       if (win) {
+        const is404 = err && (err.statusCode === 404 || /404/.test(err.message));
         dialog.showMessageBox(win, {
           type: 'error',
           title: 'Update-Fehler',
           message: 'Beim Suchen nach Updates ist ein Fehler aufgetreten.',
-          detail: err ? err.message : 'Bitte prüfen Sie Ihre Internetverbindung.'
+          detail: is404
+            ? 'Die Update-Informationen konnten auf dem Server nicht gefunden werden. Bitte versuchen Sie es später erneut.'
+            : (err ? err.message : 'Bitte prüfen Sie Ihre Internetverbindung.')
         });
       }
     }
