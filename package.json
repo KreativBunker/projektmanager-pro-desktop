@@ -37,7 +37,7 @@
     ],
     "mac": {
       "category": "public.app-category.business",
-      "icon": "build/icon.icns",
+      "icon": "build/icon.png",
       "darkModeSupport": true,
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
@@ -79,7 +79,7 @@
       "title": "ProjektManager Pro installieren"
     },
     "win": {
-      "icon": "build/icon.ico",
+      "icon": "build/icon.png",
       "target": [
         {
           "target": "nsis",
@@ -104,8 +104,6 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "ProjektManager Pro",
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
       "license": "build/license.txt",
       "language": "1031",
       "include": "build/installer.nsh",

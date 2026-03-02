@@ -1,7 +1,3 @@
-!macro customHeader
-  !system "echo '' > /dev/null"
-!macroend
-
 !macro preInit
   ; Prüfe ob bereits installiert
   ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\{${APP_ID}}" "InstallLocation"
