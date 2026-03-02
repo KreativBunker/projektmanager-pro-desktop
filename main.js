@@ -539,10 +539,43 @@ ipcMain.handle('select-directory', async () => {
   return null;
 });
 
+/**
+ * Try to remap a path by replacing its base with the configured synologyDrivePath.
+ * Works by testing progressively shorter suffixes of the original path against
+ * synologyDrivePath until a match on disk is found.
+ *
+ * Example:
+ *   original:         /Users/Admin/SynologyDrive/ProjektManager/Kunde/Projekt
+ *   synologyDrivePath: /Users/Local/SynologyDrive/ProjektManager
+ *   → tries suffixes until /Users/Local/SynologyDrive/ProjektManager/Kunde/Projekt exists
+ *
+ * @returns {string|null} The remapped path if it exists, or null.
+ */
+function tryRemapWithSynologyPath(originalPath) {
+  const synologyDrivePath = store.get('synologyDrivePath');
+  if (!synologyDrivePath || !originalPath) return null;
+
+  const parts = originalPath.replace(/\\/g, '/').split('/').filter(Boolean);
+  for (let i = 1; i < parts.length; i++) {
+    const suffix = parts.slice(i).join(path.sep);
+    const candidate = path.join(synologyDrivePath, suffix);
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
 ipcMain.handle('open-file', async (_event, filePath) => {
   console.log('[open-file] Pfad:', filePath);
   if (fs.existsSync(filePath)) {
     return shell.openPath(filePath);
+  }
+  // Fallback: try remapping with the local Synology Drive path
+  const remapped = tryRemapWithSynologyPath(filePath);
+  if (remapped) {
+    console.log('[open-file] Remapped:', remapped);
+    return shell.openPath(remapped);
   }
   console.warn('[open-file] Nicht gefunden:', filePath);
   return `Datei nicht gefunden: ${filePath}`;
@@ -552,6 +585,12 @@ ipcMain.handle('open-folder', async (_event, folderPath) => {
   console.log('[open-folder] Pfad:', folderPath);
   if (fs.existsSync(folderPath)) {
     return shell.openPath(folderPath);
+  }
+  // Fallback: try remapping with the local Synology Drive path
+  const remapped = tryRemapWithSynologyPath(folderPath);
+  if (remapped) {
+    console.log('[open-folder] Remapped:', remapped);
+    return shell.openPath(remapped);
   }
   console.warn('[open-folder] Nicht gefunden:', folderPath);
   return `Ordner nicht gefunden: ${folderPath}`;
