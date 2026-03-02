@@ -40,9 +40,7 @@ jobs:
         run: npm ci
 
       - name: Generate icons
-        run: |
-          npm install --save-dev sharp
-          node scripts/generate-icons.js
+        run: node scripts/generate-icons.js
 
       - name: Build (${{ matrix.platform }})
         env:
