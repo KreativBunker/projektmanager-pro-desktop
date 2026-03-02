@@ -2,7 +2,11 @@
   "name": "projektmanager-pro",
   "version": "1.0.0",
   "description": "ProjektManager Pro – Desktop App",
-  "author": "KreativBunker",
+  "homepage": "https://github.com/KreativBunker/projektmanager-pro-desktop",
+  "author": {
+    "name": "KreativBunker",
+    "email": "info@kreativbunker.de"
+  },
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -40,11 +44,17 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ]
     },
@@ -55,8 +65,16 @@
         "height": 380
       },
       "contents": [
-        { "x": 140, "y": 180 },
-        { "x": 400, "y": 180, "type": "link", "path": "/Applications" }
+        {
+          "x": 140,
+          "y": 180
+        },
+        {
+          "x": 400,
+          "y": 180,
+          "type": "link",
+          "path": "/Applications"
+        }
       ],
       "title": "ProjektManager Pro installieren"
     },
@@ -65,11 +83,16 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64", "ia32"]
+          "arch": [
+            "x64",
+            "ia32"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
@@ -102,7 +125,13 @@
       ]
     },
     "deb": {
-      "depends": ["libgtk-3-0", "libnotify4", "libnss3", "libxss1", "libxtst6"],
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6"
+      ],
       "category": "Office"
     },
     "publish": {
@@ -113,7 +142,8 @@
   },
   "devDependencies": {
     "electron": "^33.0.0",
-    "electron-builder": "^25.0.0"
+    "electron-builder": "^25.0.0",
+    "sharp": "^0.34.5"
   },
   "dependencies": {
     "electron-updater": "^6.3.0"
