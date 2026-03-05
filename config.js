@@ -5,6 +5,8 @@
   const elPath = document.getElementById('downloadPath');
   const elSynology = document.getElementById('synologyDrivePath');
   const elOpen = document.getElementById('openFilesLocally');
+  const elNotifications = document.getElementById('notificationsEnabled');
+  const elNotificationSound = document.getElementById('notificationSoundEnabled');
   const elStatus = document.getElementById('status');
   const btnDir = document.getElementById('btnSelectDir');
   const btnSynology = document.getElementById('btnSelectSynology');
@@ -15,6 +17,8 @@
   elPath.value = config.downloadPath || '';
   elSynology.value = config.synologyDrivePath || '';
   elOpen.checked = config.openFilesLocally !== false;
+  elNotifications.checked = config.notificationsEnabled !== false;
+  elNotificationSound.checked = config.notificationSoundEnabled !== false;
 
   btnDir.addEventListener('click', async () => {
     const dir = await window.pmpDesktop.selectDirectory();
@@ -43,7 +47,9 @@
         siteUrl: siteUrl,
         downloadPath: elPath.value,
         synologyDrivePath: elSynology.value,
-        openFilesLocally: elOpen.checked
+        openFilesLocally: elOpen.checked,
+        notificationsEnabled: elNotifications.checked,
+        notificationSoundEnabled: elNotificationSound.checked
       });
       elStatus.textContent = 'Gespeichert! App wird geladen…';
       elStatus.className = 'status success';

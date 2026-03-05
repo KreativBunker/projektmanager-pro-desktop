@@ -203,7 +203,7 @@ function openConfigWindow() {
 
   configWindow = new BrowserWindow({
     width: 520,
-    height: 540,
+    height: 640,
     resizable: false,
     title: 'Einstellungen – ProjektManager Pro',
     icon: getIconPath(),
@@ -623,6 +623,125 @@ ipcMain.handle('show-in-folder', (_event, filePath) => {
   }
   console.warn('[show-in-folder] Nicht gefunden:', filePath);
   return `Datei nicht gefunden: ${filePath}`;
+});
+
+// ── Notifications ─────────────────────────────────────────────
+
+let notificationSoundWindow = null;
+
+function playNotificationSound() {
+  const config = store.load();
+  if (!config.notificationSoundEnabled) return;
+
+  const soundPath = path.join(__dirname, 'assets', 'sounds', 'notification.wav');
+  if (!fs.existsSync(soundPath)) {
+    // Fallback: system beep
+    if (shell.beep) shell.beep();
+    return;
+  }
+
+  // Use a hidden BrowserWindow to play audio (works reliably across all platforms)
+  if (notificationSoundWindow && !notificationSoundWindow.isDestroyed()) {
+    notificationSoundWindow.webContents.executeJavaScript(
+      `new Audio('file://${soundPath.replace(/\\/g, '/')}').play().catch(function(){})`
+    ).catch(() => {});
+    return;
+  }
+
+  notificationSoundWindow = new BrowserWindow({
+    show: false,
+    width: 1,
+    height: 1,
+    webPreferences: { contextIsolation: true, nodeIntegration: false }
+  });
+  notificationSoundWindow.loadURL('about:blank').then(() => {
+    notificationSoundWindow.webContents.executeJavaScript(
+      `new Audio('file://${soundPath.replace(/\\/g, '/')}').play().catch(function(){})`
+    ).catch(() => {});
+  });
+}
+
+function updateTrayBadge(count) {
+  if (!tray || tray.isDestroyed()) return;
+
+  const num = parseInt(count, 10) || 0;
+  const tooltip = num > 0
+    ? `ProjektManager Pro – ${num} ungelesen`
+    : 'ProjektManager Pro';
+  tray.setToolTip(tooltip);
+
+  // macOS dock badge
+  if (process.platform === 'darwin' && app.dock) {
+    app.dock.setBadge(num > 0 ? String(num) : '');
+  }
+
+  // Windows: taskbar overlay icon
+  if (process.platform === 'win32' && mainWindow && !mainWindow.isDestroyed()) {
+    if (num > 0) {
+      // Create a small overlay badge image
+      const badgeCanvas = `data:image/svg+xml,${encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16">` +
+        `<circle cx="8" cy="8" r="8" fill="#ff3b30"/>` +
+        `<text x="8" y="12" text-anchor="middle" fill="#fff" font-size="10" font-family="sans-serif">${num > 9 ? '9+' : num}</text>` +
+        `</svg>`
+      )}`;
+      const img = nativeImage.createFromDataURL(badgeCanvas);
+      mainWindow.setOverlayIcon(img, `${num} ungelesen`);
+    } else {
+      mainWindow.setOverlayIcon(null, '');
+    }
+  }
+}
+
+ipcMain.handle('show-notification', (_event, data) => {
+  const config = store.load();
+  if (!config.notificationsEnabled) return false;
+  if (!Notification.isSupported()) return false;
+
+  const title = data && data.title ? String(data.title) : 'ProjektManager Pro';
+  const body = data && data.body ? String(data.body) : '';
+
+  const n = new Notification({
+    title,
+    body,
+    icon: getIconPath(),
+    silent: true // We handle sound ourselves
+  });
+
+  n.on('click', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+      // Send navigation data to the web content
+      if (data && (data.type || data.roomId || data.url)) {
+        mainWindow.webContents.send('notification-navigate', {
+          type: data.type || 'general',
+          roomId: data.roomId || null,
+          projectId: data.projectId || null,
+          url: data.url || null
+        });
+      }
+    }
+  });
+
+  n.show();
+  playNotificationSound();
+
+  return true;
+});
+
+ipcMain.handle('update-badge', (_event, count) => {
+  updateTrayBadge(count);
+  return true;
+});
+
+ipcMain.handle('get-notification-settings', () => {
+  const config = store.load();
+  return {
+    notificationsEnabled: config.notificationsEnabled !== false,
+    notificationSoundEnabled: config.notificationSoundEnabled !== false
+  };
 });
 
 // ── Helpers ───────────────────────────────────────────────────
