@@ -360,6 +360,8 @@ function setupAutoStart() {
 
 let autoUpdaterReady = false;
 let manualUpdateCheck = false;
+let downloadInitiated = false;
+let progressWindow = null;
 
 function initAutoUpdater() {
   const { autoUpdater } = require('electron-updater');
@@ -379,7 +381,22 @@ function initAutoUpdater() {
       defaultId: 0
     }).then((result) => {
       if (result.response === 0) {
-        autoUpdater.downloadUpdate();
+        downloadInitiated = true;
+        showDownloadProgress();
+        autoUpdater.downloadUpdate().catch((err) => {
+          closeDownloadProgress();
+          console.error('[auto-updater] Download-Fehler:', err ? err.message : 'Unbekannt');
+          const errWin = mainWindow || setupWindow;
+          if (errWin) {
+            dialog.showMessageBox(errWin, {
+              type: 'error',
+              title: 'Download-Fehler',
+              message: 'Das Update konnte nicht heruntergeladen werden.',
+              detail: err ? err.message : 'Bitte prüfen Sie Ihre Internetverbindung.'
+            });
+          }
+          downloadInitiated = false;
+        });
       }
     });
   });
@@ -397,10 +414,33 @@ function initAutoUpdater() {
     }
   });
 
-  autoUpdater.on('update-downloaded', () => {
+  autoUpdater.on('download-progress', (progress) => {
+    const pct = Math.round(progress.percent || 0);
+    console.log(`[auto-updater] Download: ${pct}%`);
+    if (progressWindow && !progressWindow.isDestroyed()) {
+      progressWindow.webContents.executeJavaScript(
+        `document.getElementById('pct').textContent = '${pct}%';` +
+        `document.getElementById('bar').style.width = '${pct}%';`
+      ).catch(() => {});
+      progressWindow.setProgressBar(pct / 100);
+    }
+    // Also set progress on taskbar (Windows) / dock (macOS)
     const win = mainWindow || setupWindow;
-    if (!win) return;
-    dialog.showMessageBox(win, {
+    if (win && !win.isDestroyed()) {
+      win.setProgressBar(pct / 100);
+    }
+  });
+
+  autoUpdater.on('update-downloaded', () => {
+    closeDownloadProgress();
+    downloadInitiated = false;
+    const win = mainWindow || setupWindow;
+    if (win && !win.isDestroyed()) {
+      win.setProgressBar(-1); // Remove progress bar
+    }
+    const dlgWin = mainWindow || setupWindow;
+    if (!dlgWin) return;
+    dialog.showMessageBox(dlgWin, {
       type: 'info',
       title: 'Update bereit',
       message: 'Das Update wurde heruntergeladen.',
@@ -408,21 +448,30 @@ function initAutoUpdater() {
       buttons: ['Jetzt neu starten', 'Später']
     }).then((result) => {
       if (result.response === 0) {
-        autoUpdater.quitAndInstall();
+        setImmediate(() => autoUpdater.quitAndInstall(false, true));
       }
     });
   });
 
   autoUpdater.on('error', (err) => {
     console.error('[auto-updater] Fehler:', err ? err.message : 'Unbekannter Fehler');
-    if (manualUpdateCheck) {
-      const win = mainWindow || setupWindow;
+    closeDownloadProgress();
+    const win = mainWindow || setupWindow;
+    if (win && !win.isDestroyed()) {
+      win.setProgressBar(-1);
+    }
+    // Show error dialog for manual checks and when a download was in progress
+    if (manualUpdateCheck || downloadInitiated) {
+      const wasDownloading = downloadInitiated;
+      downloadInitiated = false;
       if (win) {
         const is404 = err && (err.statusCode === 404 || /404/.test(err.message));
         dialog.showMessageBox(win, {
           type: 'error',
           title: 'Update-Fehler',
-          message: 'Beim Suchen nach Updates ist ein Fehler aufgetreten.',
+          message: wasDownloading
+            ? 'Das Update konnte nicht heruntergeladen werden.'
+            : 'Beim Suchen nach Updates ist ein Fehler aufgetreten.',
           detail: is404
             ? 'Die Update-Informationen konnten auf dem Server nicht gefunden werden. Bitte versuchen Sie es später erneut.'
             : (err ? err.message : 'Bitte prüfen Sie Ihre Internetverbindung.')
@@ -432,6 +481,50 @@ function initAutoUpdater() {
   });
 
   return autoUpdater;
+}
+
+function showDownloadProgress() {
+  if (progressWindow && !progressWindow.isDestroyed()) {
+    progressWindow.focus();
+    return;
+  }
+  progressWindow = new BrowserWindow({
+    width: 380,
+    height: 140,
+    resizable: false,
+    maximizable: false,
+    minimizable: false,
+    fullscreenable: false,
+    title: 'Update wird heruntergeladen…',
+    icon: getIconPath(),
+    parent: mainWindow || setupWindow || undefined,
+    modal: !!(mainWindow || setupWindow),
+    webPreferences: { contextIsolation: true, nodeIntegration: false },
+    show: false
+  });
+  progressWindow.setMenuBarVisibility(false);
+  progressWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`
+    <!DOCTYPE html><html><head><style>
+      body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:24px;background:#1e1e1e;color:#fff;-webkit-app-region:drag;user-select:none}
+      .label{font-size:14px;margin-bottom:12px}
+      .track{background:#333;border-radius:6px;height:12px;overflow:hidden}
+      .bar{background:#0a84ff;height:100%;width:0%;border-radius:6px;transition:width .3s}
+      .pct{font-size:13px;margin-top:8px;text-align:center;color:#aaa}
+    </style></head><body>
+      <div class="label">Update wird heruntergeladen…</div>
+      <div class="track"><div id="bar" class="bar"></div></div>
+      <div class="pct"><span id="pct">0%</span></div>
+    </body></html>
+  `)}`);
+  progressWindow.once('ready-to-show', () => progressWindow.show());
+  progressWindow.on('closed', () => { progressWindow = null; });
+}
+
+function closeDownloadProgress() {
+  if (progressWindow && !progressWindow.isDestroyed()) {
+    progressWindow.close();
+  }
+  progressWindow = null;
 }
 
 function checkForUpdates(manual = false) {
