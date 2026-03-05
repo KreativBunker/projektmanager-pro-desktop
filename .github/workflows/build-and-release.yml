@@ -54,6 +54,13 @@ jobs:
       - name: Generate icons
         run: node scripts/generate-icons.js
 
+      # ── macOS: Python 3.11 für dmg-builder (dmgbuild-Skript inkompatibel mit 3.12+) ──
+      - name: Setup Python 3.11 (macOS)
+        if: matrix.platform == 'mac'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       # ── macOS: Spotlight deaktivieren, damit hdiutil detach nicht blockiert ──
       - name: Disable Spotlight indexing (macOS)
         if: matrix.platform == 'mac'
