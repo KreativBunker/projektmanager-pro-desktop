@@ -470,7 +470,8 @@ function initAutoUpdater() {
   });
 
   autoUpdater.on('error', (err) => {
-    console.error('[auto-updater] Fehler:', err ? err.message : 'Unbekannter Fehler');
+    const errMsg = err ? (err.stack || err.message) : 'Unbekannter Fehler';
+    console.error('[auto-updater] Fehler:', errMsg);
     closeDownloadProgress();
     const win = mainWindow || setupWindow;
     if (win && !win.isDestroyed()) {
@@ -482,15 +483,22 @@ function initAutoUpdater() {
       downloadInitiated = false;
       if (win) {
         const is404 = err && (err.statusCode === 404 || /404/.test(err.message));
+        const isNetworkError = err && (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT' || err.code === 'ERR_INTERNET_DISCONNECTED');
+        let detail;
+        if (is404) {
+          detail = 'Die Update-Informationen konnten auf dem Server nicht gefunden werden. Bitte versuchen Sie es später erneut.';
+        } else if (isNetworkError) {
+          detail = 'Bitte prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.';
+        } else {
+          detail = err ? err.message : 'Bitte prüfen Sie Ihre Internetverbindung.';
+        }
         dialog.showMessageBox(win, {
           type: 'error',
           title: 'Update-Fehler',
           message: wasDownloading
             ? 'Das Update konnte nicht heruntergeladen werden.'
             : 'Beim Suchen nach Updates ist ein Fehler aufgetreten.',
-          detail: is404
-            ? 'Die Update-Informationen konnten auf dem Server nicht gefunden werden. Bitte versuchen Sie es später erneut.'
-            : (err ? err.message : 'Bitte prüfen Sie Ihre Internetverbindung.')
+          detail
         });
       }
     }
@@ -554,18 +562,9 @@ function checkForUpdates(manual = false) {
       autoUpdaterReady = true;
     }
 
+    // Error handling is done via the 'error' event in initAutoUpdater()
     autoUpdater.checkForUpdates().catch((err) => {
-      if (manual) {
-        const win = mainWindow || setupWindow;
-        if (win) {
-          dialog.showMessageBox(win, {
-            type: 'error',
-            title: 'Update-Fehler',
-            message: 'Beim Suchen nach Updates ist ein Fehler aufgetreten.',
-            detail: err ? err.message : 'Bitte prüfen Sie Ihre Internetverbindung.'
-          });
-        }
-      }
+      console.error('[auto-updater] checkForUpdates Fehler:', err ? err.message : 'Unbekannt');
     });
   } catch (_) {
     // electron-updater not available in dev mode
