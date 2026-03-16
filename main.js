@@ -1,8 +1,11 @@
-const { app, BrowserWindow, Menu, shell, dialog, ipcMain, Notification, Tray, nativeImage } = require('electron');
+const { app, BrowserWindow, Menu, shell, dialog, ipcMain, Notification, Tray, nativeImage, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { net } = require('electron');
 const store = require('./store');
+
+// Persistent session partition – keeps cookies (and thus WordPress login) across app restarts
+const PERSIST_PARTITION = 'persist:pmp';
 
 let mainWindow = null;
 let setupWindow = null;
@@ -106,7 +109,8 @@ function createMainWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      spellcheck: true
+      spellcheck: true,
+      partition: PERSIST_PARTITION
     },
     show: false
   });
@@ -284,6 +288,18 @@ function buildMenu() {
           click: () => {
             const dlPath = store.get('downloadPath') || app.getPath('downloads');
             shell.openPath(dlPath);
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Abmelden',
+          click: async () => {
+            const ses = session.fromPartition(PERSIST_PARTITION);
+            await ses.clearStorageData({ storages: ['cookies'] });
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              const siteUrl = store.get('siteUrl');
+              if (siteUrl) loadSite(siteUrl);
+            }
           }
         },
         { type: 'separator' },
@@ -826,6 +842,16 @@ ipcMain.handle('show-notification', (_event, data) => {
 
 ipcMain.handle('update-badge', (_event, count) => {
   updateTrayBadge(count);
+  return true;
+});
+
+ipcMain.handle('clear-login-data', async () => {
+  const ses = session.fromPartition(PERSIST_PARTITION);
+  await ses.clearStorageData({ storages: ['cookies'] });
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const siteUrl = store.get('siteUrl');
+    if (siteUrl) loadSite(siteUrl);
+  }
   return true;
 });
 
