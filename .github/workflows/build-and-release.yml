@@ -76,14 +76,12 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
         run: echo "macOS Code-Signing-Zertifikat wird von electron-builder automatisch verwendet."
 
-      # ── Build mit Signierung, Notarisierung und Publish ──
-      - name: Build and publish (${{ matrix.platform }})
+      # ── Build (ohne Publish – Upload erfolgt separat über gh CLI) ──
+      - name: Build (${{ matrix.platform }})
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # macOS Code Signing – wenn kein Zertifikat vorhanden, Auto-Discovery deaktivieren
-          # Hinweis: Boolean false wird in GitHub Actions zum leeren String,
-          # daher explizit String 'true'/'false' verwenden
           CSC_LINK: ${{ secrets.MAC_CERTIFICATE_P12 }}
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.MAC_CERTIFICATE_P12 != '' && 'true' || 'false' }}
@@ -105,12 +103,31 @@ jobs:
             unset WIN_CSC_LINK
             unset WIN_CSC_KEY_PASSWORD
           fi
-          npx electron-builder --${{ matrix.platform }} --publish always
+          npx electron-builder --${{ matrix.platform }} --publish never
 
       - name: List built files
-        if: always()
         shell: bash
-        run: find dist -maxdepth 1 -type f | sort
+        run: |
+          echo "=== Dateien in dist/ ==="
+          find dist -maxdepth 1 -type f | sort
+          echo "=== Dateigrössen ==="
+          find dist -maxdepth 1 -type f -exec ls -lh {} \;
+
+      # ── Release-Dateien direkt per gh CLI hochladen ──
+      - name: Upload release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          # Draft-Release erstellen falls noch nicht vorhanden
+          gh release create "$TAG" --draft --generate-notes --repo "${{ github.repository }}" 2>/dev/null || true
+          # Alle relevanten Dateien hochladen
+          for f in dist/*.exe dist/*.dmg dist/*.AppImage dist/*.deb dist/*.rpm dist/*.zip dist/*.yml dist/*.blockmap; do
+            [ -f "$f" ] || continue
+            echo "Uploading: $f"
+            gh release upload "$TAG" "$f" --repo "${{ github.repository }}" --clobber
+          done
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -132,9 +149,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: false
-          generate_release_notes: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          echo "Publishing release $TAG..."
+          # Draft-Release veröffentlichen
+          gh release edit "$TAG" --draft=false --repo "${{ github.repository }}"
+          echo "Release $TAG published successfully."
+          # Assets auflisten zur Verifizierung
+          echo "=== Release Assets ==="
+          gh release view "$TAG" --repo "${{ github.repository }}" --json assets --jq '.assets[].name'
