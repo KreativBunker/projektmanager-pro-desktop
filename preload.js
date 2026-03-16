@@ -24,6 +24,9 @@ contextBridge.exposeInMainWorld('pmpDesktop', {
     ipcRenderer.on('notification-navigate', (_event, data) => callback(data));
   },
 
+  // Session
+  clearLoginData: () => ipcRenderer.invoke('clear-login-data'),
+
   // Info
   isDesktopApp: true
 });
