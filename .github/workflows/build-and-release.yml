@@ -76,6 +76,13 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
         run: echo "macOS Code-Signing-Zertifikat wird von electron-builder automatisch verwendet."
 
+      # ── macOS: app-builder Binary-Berechtigungen setzen ──
+      - name: Fix app-builder permissions (macOS)
+        if: matrix.platform == 'mac'
+        run: |
+          # ERR_ELECTRON_BUILDER_CANNOT_EXECUTE auf ARM64-Runnern beheben
+          find node_modules -name "app-builder_*" -type f -exec chmod +x {} \;
+
       # ── Build (ohne Publish – Upload erfolgt separat über gh CLI) ──
       - name: Build (${{ matrix.platform }})
         shell: bash
