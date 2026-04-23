@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { net } = require('electron');
 const store = require('./store');
+const credentialsModule = require('./credentials');
 
 // Persistent session partition – keeps cookies (and thus WordPress login) across app restarts
 const PERSIST_PARTITION = 'persist:pmp';
@@ -11,6 +12,7 @@ let mainWindow = null;
 let setupWindow = null;
 let configWindow = null;
 let tray = null;
+let lastAutoLoginAt = 0;
 
 // ── App Lifecycle ─────────────────────────────────────────────
 
@@ -144,7 +146,20 @@ function loadSite(url) {
     normalizedUrl = 'https://' + normalizedUrl;
   }
 
+  // Identify as PM-Pro desktop client so the WordPress plugin can apply
+  // desktop-specific behaviour (e.g. long-lived auth cookies).
+  try {
+    const baseUa = mainWindow.webContents.getUserAgent();
+    if (baseUa.indexOf('PMPDesktop/') === -1) {
+      mainWindow.webContents.setUserAgent(`${baseUa} PMPDesktop/${app.getVersion()}`);
+    }
+  } catch (_) {}
+
   mainWindow.loadURL(normalizedUrl);
+
+  // Auto-login / credential capture on the WordPress login page.
+  mainWindow.webContents.removeAllListeners('did-finish-load');
+  mainWindow.webContents.on('did-finish-load', () => handleLoginPage(normalizedUrl));
 
   // Handle file downloads – save locally and open
   const ses = mainWindow.webContents.session;
@@ -195,6 +210,85 @@ function loadSite(url) {
       }
     } catch (_) {}
   });
+}
+
+// ── Auto-Login ────────────────────────────────────────────────
+
+async function handleLoginPage(siteBaseUrl) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+
+  const currentUrl = mainWindow.webContents.getURL();
+  let current, siteOrigin;
+  try {
+    current = new URL(currentUrl);
+    siteOrigin = new URL(siteBaseUrl).origin;
+  } catch (_) {
+    return;
+  }
+
+  // Only act on the configured site — never inject credentials elsewhere.
+  if (current.origin !== siteOrigin) return;
+
+  const pathname = current.pathname || '';
+  const isLoginPage =
+    pathname.includes('wp-login.php') ||
+    pathname.endsWith('/login/') ||
+    pathname.endsWith('/login') ||
+    pathname.endsWith('/anmelden/') ||
+    pathname.endsWith('/anmelden');
+
+  if (!isLoginPage) return;
+  if (!store.get('autoLoginEnabled')) return;
+
+  // 1) Install a submit-listener so future manual logins get captured.
+  const captureScript = `
+    (function(){
+      if (window.__pmpCaptureInstalled) return;
+      window.__pmpCaptureInstalled = true;
+      var form = document.getElementById('loginform') || document.querySelector('form[name="loginform"]');
+      if (!form) return;
+      form.addEventListener('submit', function(){
+        try {
+          var u = document.getElementById('user_login');
+          var p = document.getElementById('user_pass');
+          if (u && p && u.value && p.value && window.pmpDesktop && window.pmpDesktop.credentials) {
+            window.pmpDesktop.credentials.save({ username: u.value, password: p.value });
+          }
+        } catch(_){}
+      });
+    })();
+  `;
+  try { await mainWindow.webContents.executeJavaScript(captureScript, true); } catch (_) {}
+
+  // 2) Try auto-login if credentials are stored and we didn't just try.
+  const now = Date.now();
+  if (now - lastAutoLoginAt < 10000) {
+    // We auto-submitted recently and ended up back on the login page → wrong credentials.
+    credentialsModule.clearCredentials();
+    lastAutoLoginAt = 0;
+    return;
+  }
+
+  const creds = credentialsModule.getCredentials();
+  if (!creds) return;
+
+  lastAutoLoginAt = now;
+  const safeUser = JSON.stringify(creds.username);
+  const safePass = JSON.stringify(creds.password);
+  const fillScript = `
+    (function(){
+      var u = document.getElementById('user_login');
+      var p = document.getElementById('user_pass');
+      var r = document.getElementById('rememberme');
+      var form = document.getElementById('loginform') || document.querySelector('form[name="loginform"]');
+      if (!u || !p || !form) return;
+      u.value = ${safeUser};
+      p.value = ${safePass};
+      if (r) r.checked = true;
+      form.submit();
+    })();
+  `;
+  try { await mainWindow.webContents.executeJavaScript(fillScript, true); } catch (_) {}
 }
 
 // ── Config Window ─────────────────────────────────────────────
@@ -296,6 +390,8 @@ function buildMenu() {
           click: async () => {
             const ses = session.fromPartition(PERSIST_PARTITION);
             await ses.clearStorageData({ storages: ['cookies'] });
+            credentialsModule.clearCredentials();
+            lastAutoLoginAt = Date.now(); // block auto-login right after manual logout
             if (mainWindow && !mainWindow.isDestroyed()) {
               const siteUrl = store.get('siteUrl');
               if (siteUrl) loadSite(siteUrl);
@@ -847,12 +943,19 @@ ipcMain.handle('update-badge', (_event, count) => {
 ipcMain.handle('clear-login-data', async () => {
   const ses = session.fromPartition(PERSIST_PARTITION);
   await ses.clearStorageData({ storages: ['cookies'] });
+  credentialsModule.clearCredentials();
+  lastAutoLoginAt = Date.now();
   if (mainWindow && !mainWindow.isDestroyed()) {
     const siteUrl = store.get('siteUrl');
     if (siteUrl) loadSite(siteUrl);
   }
   return true;
 });
+
+ipcMain.handle('credentials:save', (_e, creds) => credentialsModule.saveCredentials(creds));
+ipcMain.handle('credentials:clear', () => credentialsModule.clearCredentials());
+ipcMain.handle('credentials:has', () => credentialsModule.hasCredentials());
+ipcMain.handle('credentials:available', () => credentialsModule.isAvailable());
 
 ipcMain.handle('get-notification-settings', () => {
   const config = store.load();

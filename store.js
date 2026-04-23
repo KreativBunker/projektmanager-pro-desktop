@@ -11,6 +11,7 @@ const defaults = {
   openFilesLocally: true,
   notificationsEnabled: true,
   notificationSoundEnabled: true,
+  autoLoginEnabled: false,
   windowBounds: { width: 1280, height: 800 }
 };
 

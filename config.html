@@ -185,6 +185,16 @@
     </div>
   </div>
 
+  <div class="toggle-row">
+    <label>Automatisch angemeldet bleiben</label>
+    <div class="toggle">
+      <input type="checkbox" id="autoLoginEnabled">
+      <span class="slider"></span>
+    </div>
+  </div>
+  <p class="hint" id="autoLoginHint">Zugangsdaten werden verschlüsselt im System-Schlüsselbund gespeichert und nur für das automatische Anmelden verwendet.</p>
+  <button class="btn btn-secondary" id="btnClearCreds" style="display:none; width:100%; margin-top:8px;">Gespeicherte Zugangsdaten entfernen</button>
+
   <button class="btn btn-primary" id="btnSave">Speichern &amp; Verbinden</button>
   <p class="status" id="status"></p>
 
