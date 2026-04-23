@@ -8,8 +8,28 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure draft release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          # Idempotent: Release nur anlegen, wenn noch keins (auch kein Draft) existiert.
+          if ! gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release create "$TAG" --draft --generate-notes --repo "${{ github.repository }}"
+          else
+            echo "Release $TAG existiert bereits – überspringe Draft-Erstellung."
+          fi
+
   build:
+    needs: create-release
     strategy:
       fail-fast: false
       matrix:
@@ -127,8 +147,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${GITHUB_REF_NAME}"
-          # Draft-Release erstellen falls noch nicht vorhanden
-          gh release create "$TAG" --draft --generate-notes --repo "${{ github.repository }}" 2>/dev/null || true
+          # Draft-Release wird vorab einmalig vom create-release-Job angelegt.
           # Alle relevanten Dateien hochladen
           for f in dist/*.exe dist/*.dmg dist/*.AppImage dist/*.deb dist/*.rpm dist/*.zip dist/*.yml dist/*.blockmap; do
             [ -f "$f" ] || continue
