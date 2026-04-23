@@ -68,7 +68,7 @@
     "dmg": {
       "sign": false,
       "writeUpdateInfo": false,
-      "background": null,
+      "background": "build/background.tiff",
       "title": "ProjektManager-Pro"
     },
     "win": {
