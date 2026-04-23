@@ -68,6 +68,21 @@ async function generate() {
   fs.copyFileSync(path.join(iconsDir, '512x512.png'), buildIcon);
   console.log('  build/icon.png (512x512)');
 
+  // DMG background (plain white 540x380 TIFF).
+  // dmg-builder expects a background.tiff to exist; without it the build
+  // fails with FileNotFoundError in mac_alias. A neutral placeholder is
+  // sufficient – users see a plain window.
+  const bgPath = path.join(buildDir, 'background.tiff');
+  await sharp({
+    create: {
+      width: 540,
+      height: 380,
+      channels: 3,
+      background: { r: 255, g: 255, b: 255 }
+    }
+  }).tiff().toFile(bgPath);
+  console.log('  build/background.tiff (540x380)');
+
   // Runtime icon
   const runtimeIcon = path.join(assetsDir, 'icon.png');
   fs.copyFileSync(path.join(iconsDir, '512x512.png'), runtimeIcon);
