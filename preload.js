@@ -27,6 +27,14 @@ contextBridge.exposeInMainWorld('pmpDesktop', {
   // Session
   clearLoginData: () => ipcRenderer.invoke('clear-login-data'),
 
+  // Credentials (encrypted via OS keychain)
+  credentials: {
+    save: (creds) => ipcRenderer.invoke('credentials:save', creds),
+    clear: () => ipcRenderer.invoke('credentials:clear'),
+    has: () => ipcRenderer.invoke('credentials:has'),
+    available: () => ipcRenderer.invoke('credentials:available')
+  },
+
   // Info
   isDesktopApp: true
 });
