@@ -73,14 +73,50 @@ async function generate() {
   fs.copyFileSync(path.join(iconsDir, '512x512.png'), runtimeIcon);
   console.log('  assets/icon.png (512x512)');
 
-  // Windows ICO (256x256 PNG as base – electron-builder handles conversion)
-  // For a proper .ico we need to convert; sharp can output to PNG which
-  // electron-builder will convert automatically if icon.png exists
+  // Windows ICO – create a multi-resolution .ico with embedded PNGs
+  const icoSizes = [16, 32, 48, 64, 128, 256];
+  const pngBuffers = [];
+  for (const size of icoSizes) {
+    const pngBuf = await sharp(svgBuffer).resize(size, size).png().toBuffer();
+    pngBuffers.push({ size, buf: pngBuf });
+  }
+
+  const imageCount = pngBuffers.length;
+  const headerSize = 6;
+  const dirEntrySize = 16;
+  const dirSize = dirEntrySize * imageCount;
+  let dataOffset = headerSize + dirSize;
+
+  // ICO header: reserved (2), type=1 (2), count (2)
+  const header = Buffer.alloc(headerSize);
+  header.writeUInt16LE(0, 0);          // reserved
+  header.writeUInt16LE(1, 2);          // type: 1 = ICO
+  header.writeUInt16LE(imageCount, 4); // number of images
+
+  // Directory entries
+  const dirEntries = Buffer.alloc(dirSize);
+  let currentOffset = dataOffset;
+  for (let i = 0; i < imageCount; i++) {
+    const { size: s, buf } = pngBuffers[i];
+    const offset = i * dirEntrySize;
+    dirEntries.writeUInt8(s < 256 ? s : 0, offset);       // width (0 = 256)
+    dirEntries.writeUInt8(s < 256 ? s : 0, offset + 1);   // height (0 = 256)
+    dirEntries.writeUInt8(0, offset + 2);                  // color palette
+    dirEntries.writeUInt8(0, offset + 3);                  // reserved
+    dirEntries.writeUInt16LE(1, offset + 4);               // color planes
+    dirEntries.writeUInt16LE(32, offset + 6);              // bits per pixel
+    dirEntries.writeUInt32LE(buf.length, offset + 8);      // image data size
+    dirEntries.writeUInt32LE(currentOffset, offset + 12);  // image data offset
+    currentOffset += buf.length;
+  }
+
+  const icoBuffer = Buffer.concat([header, dirEntries, ...pngBuffers.map(p => p.buf)]);
+  const icoPath = path.join(buildDir, 'icon.ico');
+  fs.writeFileSync(icoPath, icoBuffer);
+  console.log('  build/icon.ico (multi-resolution)');
+
   console.log('');
   console.log('Icons erfolgreich generiert!');
-  console.log('');
-  console.log('Hinweis: electron-builder konvertiert icon.png automatisch');
-  console.log('in .ico (Windows) und .icns (macOS) beim Build.');
 }
 
 generate().catch((err) => {
