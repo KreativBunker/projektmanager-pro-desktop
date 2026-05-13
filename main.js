@@ -23,6 +23,64 @@ function getLaunchSiteUrl() {
   return arg ? arg.slice(prefix.length) : '';
 }
 
+// Register custom URL scheme so that pmp://open-nas?path=... links from the
+// web UI open the matching folder in the OS file explorer.
+const PMP_PROTOCOL = 'pmp';
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient(PMP_PROTOCOL, process.execPath, [path.resolve(process.argv[1])]);
+  }
+} else {
+  app.setAsDefaultProtocolClient(PMP_PROTOCOL);
+}
+
+// Ensure a single instance so protocol activation on Windows/Linux is forwarded
+// to the existing window rather than starting a second app instance.
+const gotSingleLock = app.requestSingleInstanceLock();
+if (!gotSingleLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (_event, argv) => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+    const url = argv.find((a) => typeof a === 'string' && a.startsWith(PMP_PROTOCOL + '://'));
+    if (url) handlePmpUrl(url);
+  });
+}
+
+// macOS-style protocol activation.
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  handlePmpUrl(url);
+});
+
+function handlePmpUrl(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== PMP_PROTOCOL + ':') return;
+    const action = url.hostname || url.pathname.replace(/^\/+/, '').split('/')[0] || '';
+    if (action === 'open-nas') {
+      const relative = url.searchParams.get('path') || '';
+      if (!relative) return;
+      const synologyDrivePath = store.get('synologyDrivePath');
+      if (!synologyDrivePath) {
+        console.warn('[pmp://] Synology Drive Pfad nicht konfiguriert.');
+        return;
+      }
+      const fullPath = path.join(synologyDrivePath, relative);
+      if (fs.existsSync(fullPath)) {
+        shell.openPath(fullPath);
+      } else {
+        console.warn('[pmp://] Ordner nicht gefunden:', fullPath);
+      }
+    }
+  } catch (err) {
+    console.warn('[pmp://] Fehlerhafte URL:', rawUrl, err);
+  }
+}
+
 app.whenReady().then(() => {
   setupAutoStart();
 
@@ -34,6 +92,10 @@ app.whenReady().then(() => {
   }
 
   checkForUpdates();
+
+  // Handle protocol URL from cold-start argv (Windows/Linux).
+  const startupUrl = process.argv.find((a) => typeof a === 'string' && a.startsWith(PMP_PROTOCOL + '://'));
+  if (startupUrl) handlePmpUrl(startupUrl);
 });
 
 app.on('window-all-closed', () => {
