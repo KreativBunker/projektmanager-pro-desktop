@@ -12,7 +12,13 @@ const defaults = {
   notificationsEnabled: true,
   notificationSoundEnabled: true,
   autoLoginEnabled: false,
-  windowBounds: { width: 1280, height: 800 }
+  windowBounds: { width: 1280, height: 800 },
+  // 3CX-Integration
+  threecxEnabled: false,
+  threecxUrl: '',          // URL des 3CX-Web-Clients
+  threecxApiKey: '',       // API-Key für die WordPress-REST-API
+  threecxPopupSeconds: 20, // Auto-Ausblenden des Anrufer-Popups
+  threecxAllowMedia: false // Softphone-Audio (Mikrofon) erlauben – vorbereitet, Default aus
 };
 
 function load() {
