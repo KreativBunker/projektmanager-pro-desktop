@@ -1,6 +1,6 @@
 {
   "name": "projektmanager-pro",
-  "version": "1.3.8",
+  "version": "1.3.9",
   "description": "ProjektManager Pro – Desktop App",
   "homepage": "https://github.com/KreativBunker/projektmanager-pro-desktop",
   "author": {
@@ -35,6 +35,10 @@
       "config.js",
       "store.js",
       "credentials.js",
+      "threecx.js",
+      "caller-popup.html",
+      "caller-popup.js",
+      "caller-popup-preload.js",
       "assets/**/*"
     ],
     "mac": {
