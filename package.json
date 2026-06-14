@@ -108,7 +108,9 @@
       "icon": "build/icons",
       "category": "Office",
       "desktop": {
-        "StartupWMClass": "projektmanager-pro"
+        "entry": {
+          "StartupWMClass": "projektmanager-pro"
+        }
       },
       "target": [
         "AppImage",
@@ -135,7 +137,7 @@
   "devDependencies": {
     "@electron/notarize": "^2.5.0",
     "electron": "^33.0.0",
-    "electron-builder": "^25.0.0",
+    "electron-builder": "^26.15.3",
     "sharp": "^0.34.5"
   },
   "dependencies": {
