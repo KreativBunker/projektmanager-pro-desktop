@@ -4,6 +4,7 @@ const fs = require('fs');
 const { net } = require('electron');
 const store = require('./store');
 const credentialsModule = require('./credentials');
+const threecx = require('./threecx');
 
 // Persistent session partition – keeps cookies (and thus WordPress login) across app restarts
 const PERSIST_PARTITION = 'persist:pmp';
@@ -196,6 +197,27 @@ function createMainWindow() {
   }
   buildMenu();
   createTray();
+
+  // 3CX-Integration initialisieren (eingebetteter Web-Client + Anrufer-Popup).
+  threecx.init({
+    getIconPath,
+    openInMainWindow,
+  });
+}
+
+// Navigiert das Hauptfenster zur übergebenen URL (z. B. Kunde/Projekt aus dem
+// Anrufer-Popup) und bringt es in den Vordergrund.
+function openInMainWindow(url) {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createMainWindow();
+  }
+  if (!mainWindow) return;
+  try {
+    mainWindow.webContents.loadURL(url);
+  } catch (_) {}
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
 }
 
 // ── Load Site ─────────────────────────────────────────────────
@@ -363,8 +385,8 @@ function openConfigWindow() {
 
   configWindow = new BrowserWindow({
     width: 520,
-    height: 640,
-    resizable: false,
+    height: 860,
+    resizable: true,
     title: 'Einstellungen – ProjektManager Pro',
     icon: getIconPath(),
     parent: mainWindow,
@@ -401,9 +423,33 @@ function createTray() {
         mainWindow.isVisible() ? mainWindow.focus() : mainWindow.show();
       }
     });
+    updateTrayMenu();
   } catch (_) {
     // Tray creation can fail on some Linux DEs
   }
+}
+
+// Baut das Kontextmenü des Tray-Icons (inkl. 3CX-Telefon-Umschalter).
+function updateTrayMenu() {
+  if (!tray || tray.isDestroyed()) return;
+  const threecxEnabled = !!store.get('threecxEnabled');
+  const items = [
+    {
+      label: 'ProjektManager öffnen',
+      click: () => { if (mainWindow) { mainWindow.show(); mainWindow.focus(); } }
+    },
+  ];
+  if (threecxEnabled) {
+    items.push({ type: 'separator' });
+    items.push({
+      label: threecx.isPhoneVisible() ? 'Telefon ausblenden' : 'Telefon anzeigen',
+      click: () => { threecx.togglePhoneWindow(); updateTrayMenu(); }
+    });
+  }
+  items.push({ type: 'separator' });
+  items.push({ label: 'Einstellungen…', click: () => openConfigWindow() });
+  items.push({ role: 'quit', label: 'Beenden' });
+  tray.setContextMenu(Menu.buildFromTemplate(items));
 }
 
 // ── Menu ──────────────────────────────────────────────────────
@@ -754,6 +800,10 @@ ipcMain.handle('save-config', (_event, config) => {
     loadSite(config.siteUrl);
     buildMenu();
   }
+
+  // 3CX-Integration nach Konfigurationsänderung neu anwenden.
+  threecx.applyConfig();
+  updateTrayMenu();
   return true;
 });
 

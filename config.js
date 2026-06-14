@@ -15,6 +15,14 @@
   const btnClearCreds = document.getElementById('btnClearCreds');
   const btnSave = document.getElementById('btnSave');
 
+  // 3CX-Felder
+  const elThreecxEnabled = document.getElementById('threecxEnabled');
+  const elThreecxUrl = document.getElementById('threecxUrl');
+  const elThreecxApiKey = document.getElementById('threecxApiKey');
+  const elThreecxPopupSeconds = document.getElementById('threecxPopupSeconds');
+  const elThreecxAllowMedia = document.getElementById('threecxAllowMedia');
+  const elThreecxFields = document.getElementById('threecxFields');
+
   // Populate current values
   elUrl.value = config.siteUrl || '';
   elPath.value = config.downloadPath || '';
@@ -23,6 +31,19 @@
   elNotifications.checked = config.notificationsEnabled !== false;
   elNotificationSound.checked = config.notificationSoundEnabled !== false;
   elAutoLogin.checked = !!config.autoLoginEnabled;
+
+  // 3CX-Werte
+  elThreecxEnabled.checked = !!config.threecxEnabled;
+  elThreecxUrl.value = config.threecxUrl || '';
+  elThreecxApiKey.value = config.threecxApiKey || '';
+  elThreecxPopupSeconds.value = config.threecxPopupSeconds != null ? String(config.threecxPopupSeconds) : '20';
+  elThreecxAllowMedia.checked = !!config.threecxAllowMedia;
+
+  function refreshThreecxFields() {
+    elThreecxFields.style.display = elThreecxEnabled.checked ? 'block' : 'none';
+  }
+  refreshThreecxFields();
+  elThreecxEnabled.addEventListener('change', refreshThreecxFields);
 
   // Disable auto-login toggle if OS keychain/safeStorage isn't available.
   try {
@@ -82,6 +103,7 @@
     btnSave.disabled = true;
 
     try {
+      const popupSecs = parseInt(elThreecxPopupSeconds.value, 10);
       await window.pmpDesktop.saveConfig({
         siteUrl: siteUrl,
         downloadPath: elPath.value,
@@ -89,7 +111,12 @@
         openFilesLocally: elOpen.checked,
         notificationsEnabled: elNotifications.checked,
         notificationSoundEnabled: elNotificationSound.checked,
-        autoLoginEnabled: elAutoLogin.checked
+        autoLoginEnabled: elAutoLogin.checked,
+        threecxEnabled: elThreecxEnabled.checked,
+        threecxUrl: elThreecxUrl.value.trim(),
+        threecxApiKey: elThreecxApiKey.value.trim(),
+        threecxPopupSeconds: (!isNaN(popupSecs) && popupSecs > 0) ? popupSecs : 20,
+        threecxAllowMedia: elThreecxAllowMedia.checked
       });
       elStatus.textContent = 'Gespeichert! App wird geladen…';
       elStatus.className = 'status success';

@@ -195,6 +195,53 @@
   <p class="hint" id="autoLoginHint">Zugangsdaten werden verschlüsselt im System-Schlüsselbund gespeichert und nur für das automatische Anmelden verwendet.</p>
   <button class="btn btn-secondary" id="btnClearCreds" style="display:none; width:100%; margin-top:8px;">Gespeicherte Zugangsdaten entfernen</button>
 
+  <hr style="border:none;border-top:1px solid #d2d2d7;margin:24px 0 16px;">
+  <h1 style="font-size:16px;">3CX-Telefonie</h1>
+
+  <div class="toggle-row">
+    <label>3CX-Integration aktivieren</label>
+    <label class="toggle">
+      <input type="checkbox" id="threecxEnabled">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div id="threecxFields">
+    <div class="form-group">
+      <label for="threecxUrl">3CX-Web-Client-URL</label>
+      <input type="url" id="threecxUrl" placeholder="https://meinefirma.3cx.eu">
+      <p class="hint">Die Adresse Ihres 3CX-Web-Clients. Wird unsichtbar im Hintergrund geladen, damit das Telefon angemeldet bleibt.</p>
+    </div>
+
+    <div class="form-group">
+      <label for="threecxApiKey">API-Key (aus WordPress)</label>
+      <input type="text" id="threecxApiKey" placeholder="API-Key aus „3CX-Telefonie" im CRM">
+      <p class="hint">Im WordPress-Backend unter ProjektManager Pro → 3CX-Telefonie erzeugen.</p>
+    </div>
+
+    <div class="form-group">
+      <label for="threecxSentinel">Diese URL in 3CX eintragen („Kontakt-URL öffnen")</label>
+      <input type="text" id="threecxSentinel" readonly
+             value="http://pmp.local/incoming-call?phoneNumber=%CallerNumber%&displayName=%CallerDisplayName%"
+             onclick="this.select()">
+      <p class="hint">3CX-Web-Client → Einstellungen → Integration → CRM-Integration → „Kontakt in personalisiertem CRM öffnen", Benachrichtigen wenn: Klingeln.</p>
+    </div>
+
+    <div class="form-group">
+      <label for="threecxPopupSeconds">Popup automatisch ausblenden nach (Sekunden)</label>
+      <input type="text" id="threecxPopupSeconds" placeholder="20">
+    </div>
+
+    <div class="toggle-row">
+      <label>Softphone-Audio (Mikrofon) erlauben</label>
+      <label class="toggle">
+        <input type="checkbox" id="threecxAllowMedia">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <p class="hint">Nur aktivieren, wenn Sie direkt in der App telefonieren möchten. Standard: aus (Audio läuft über Tischtelefon/separates Softphone).</p>
+  </div>
+
   <button class="btn btn-primary" id="btnSave">Speichern &amp; Verbinden</button>
   <p class="status" id="status"></p>
 
