@@ -34,11 +34,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macos-13 (Intel) statt macos-latest: Auf den neuen ARM-Runnern (macOS 15)
-          # erzwingt app-builder APFS und scheitert beim DMG-Bau mit
-          # "mkdir /Volumes/...: permission denied". Der Intel-Runner nutzt HFS+
-          # und baut DMG (x64 + arm64) zuverlässig.
-          - os: macos-13
+          # macos-latest (ARM): macos-13/Intel bekommt für diesen Account keinen
+          # Runner zugewiesen. Der frühere APFS-DMG-Fehler ("mkdir /Volumes/...:
+          # permission denied") wird durch das Update auf electron-builder 26
+          # (neueres app-builder-bin) behoben.
+          - os: macos-latest
             platform: mac
           - os: windows-latest
             platform: win
