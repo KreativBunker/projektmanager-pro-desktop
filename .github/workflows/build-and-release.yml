@@ -34,7 +34,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          # macos-13 (Intel) statt macos-latest: Auf den neuen ARM-Runnern (macOS 15)
+          # erzwingt app-builder APFS und scheitert beim DMG-Bau mit
+          # "mkdir /Volumes/...: permission denied". Der Intel-Runner nutzt HFS+
+          # und baut DMG (x64 + arm64) zuverlässig.
+          - os: macos-13
             platform: mac
           - os: windows-latest
             platform: win
