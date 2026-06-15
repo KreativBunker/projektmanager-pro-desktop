@@ -26,63 +26,49 @@
       align-items: center;
       gap: 8px;
       -webkit-app-region: drag;
+      flex: 0 0 auto;
     }
-    .header .ring {
-      width: 18px; height: 18px; flex: 0 0 auto;
-    }
+    .header .ring { width: 18px; height: 18px; flex: 0 0 auto; }
     .header .label { font-size: 12px; font-weight: 600; letter-spacing: .3px; text-transform: uppercase; opacity: .95; }
     .header .close {
-      margin-left: auto;
-      -webkit-app-region: no-drag;
-      cursor: pointer;
-      width: 22px; height: 22px;
-      display: flex; align-items: center; justify-content: center;
-      border-radius: 6px;
-      font-size: 16px; line-height: 1;
-      opacity: .9;
+      margin-left: auto; -webkit-app-region: no-drag; cursor: pointer;
+      width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+      border-radius: 6px; font-size: 16px; line-height: 1; opacity: .9;
     }
     .header .close:hover { background: rgba(255,255,255,.2); }
-    .body {
-      padding: 14px;
-      flex: 1;
-      overflow-y: auto;
-    }
+    .body { padding: 14px; flex: 1 1 auto; overflow-y: auto; }
     .name { font-size: 19px; font-weight: 700; line-height: 1.2; }
     .firma { font-size: 13px; color: #6e6e73; margin-top: 2px; }
     .meta { font-size: 13px; color: #1d1d1f; margin-top: 8px; }
     .meta .num { font-variant-numeric: tabular-nums; font-weight: 600; }
     .contact-tag {
       display: inline-block; margin-top: 8px;
-      background: #eef6fb; color: #0073aa;
-      font-size: 12px; font-weight: 600;
+      background: #eef6fb; color: #0073aa; font-size: 12px; font-weight: 600;
       padding: 2px 8px; border-radius: 10px;
     }
     .unknown .name { color: #6e6e73; }
-    .projects { margin-top: 12px; }
-    .projects .head { font-size: 11px; text-transform: uppercase; letter-spacing: .3px; color: #86868b; margin-bottom: 6px; }
-    .project {
-      -webkit-app-region: no-drag;
-      display: block; width: 100%; text-align: left;
-      background: #f5f5f7; border: none; border-radius: 8px;
-      padding: 7px 10px; margin-bottom: 6px;
-      font-size: 13px; color: #1d1d1f; cursor: pointer;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    .field { margin-top: 12px; }
+    .field label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .3px; color: #86868b; margin-bottom: 4px; }
+    .field select, .field input[type="text"], .field textarea {
+      width: 100%; padding: 7px 10px; font-size: 13px; font-family: inherit;
+      border: 1px solid #d2d2d7; border-radius: 8px; background: #fff; outline: none; color: #1d1d1f;
     }
-    .project:hover { background: #e8e8ed; }
-    .footer {
-      padding: 10px 14px; border-top: 1px solid #ececf0;
-      display: flex; gap: 8px;
+    .field textarea { resize: vertical; min-height: 56px; }
+    .field select:focus, .field input:focus, .field textarea:focus {
+      border-color: #0073aa; box-shadow: 0 0 0 3px rgba(0,115,170,.15);
     }
+    .footer { padding: 10px 14px; border-top: 1px solid #ececf0; display: flex; gap: 8px; flex: 0 0 auto; }
     .btn {
-      -webkit-app-region: no-drag;
-      flex: 1; padding: 9px; border: none; border-radius: 8px;
+      -webkit-app-region: no-drag; flex: 1; padding: 9px; border: none; border-radius: 8px;
       font-size: 13px; font-weight: 600; cursor: pointer;
     }
     .btn-primary { background: #0073aa; color: #fff; }
     .btn-primary:hover { background: #005a87; }
     .btn-secondary { background: #e8e8ed; color: #1d1d1f; }
     .btn-secondary:hover { background: #d2d2d7; }
-    .more { font-size: 12px; color: #86868b; margin-top: 8px; }
+    .status { font-size: 12px; margin-top: 8px; min-height: 16px; }
+    .status.ok { color: #34c759; }
+    .status.err { color: #ff3b30; }
   </style>
 </head>
 <body>
