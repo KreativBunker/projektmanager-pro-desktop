@@ -121,21 +121,41 @@ async function handleIncomingCall(rawUrl) {
 
   const matched = (lookup && lookup.found && lookup.matches && lookup.matches[0]) ? lookup.matches[0] : null;
 
-  // Protokollierung (fire-and-forget)
-  apiLog({
-    phoneNumber,
-    displayName,
-    direction: 'in',
-    matched_user_id: matched ? matched.customer_id : null,
-  }).catch((err) => console.warn('[3cx] Log fehlgeschlagen:', err.message));
+  // Protokollierung. Server dedupliziert (gleiche Nummer im Zeitfenster) und
+  // liefert die call_id zurück – auch wenn der Anruf auf mehreren PCs klingelt.
+  let callId = null;
+  let matchedProject = null;
+  try {
+    const res = await apiLog({
+      phoneNumber,
+      displayName,
+      direction: 'in',
+      matched_user_id: matched ? matched.customer_id : null,
+    });
+    if (res && res.call_id) {
+      callId = res.call_id;
+      matchedProject = res.matched_project_id || null;
+    }
+  } catch (err) {
+    console.warn('[3cx] Log fehlgeschlagen:', err.message);
+  }
 
-  showCallerPopup({ phoneNumber, displayName, lookup });
+  const createCustomerUrl = buildCreateCustomerUrl(phoneNumber);
+
+  showCallerPopup({ phoneNumber, displayName, lookup, callId, matchedProject, createCustomerUrl });
+}
+
+// URL der Frontend-Kundenregistrierung mit vorbelegter Telefonnummer.
+function buildCreateCustomerUrl(phoneNumber) {
+  const base = baseUrl();
+  if (!base) return '';
+  return base + '/kundenregistrierung/?step=register&telefon=' + encodeURIComponent(phoneNumber || '');
 }
 
 // ── Anrufer-Popup ─────────────────────────────────────────────
 
 function showCallerPopup(payload) {
-  const W = 360, H = 240;
+  const W = 380, H = 420;
   const wa = screen.getPrimaryDisplay().workArea;
 
   if (!popupWindow || popupWindow.isDestroyed()) {
@@ -325,6 +345,23 @@ function init(injected) {
   ipcMain.handle('threecx:close-popup', () => {
     if (popupWindow && !popupWindow.isDestroyed()) popupWindow.hide();
     return true;
+  });
+
+  // Auto-Ausblenden abbrechen, sobald der Nutzer mit dem Popup interagiert.
+  ipcMain.handle('threecx:keep-open', () => {
+    if (popupTimer) { clearTimeout(popupTimer); popupTimer = null; }
+    return true;
+  });
+
+  // Notiz/Name/Projekt zu einem Anruf speichern (-> Feed-Eintrag im CRM).
+  ipcMain.handle('threecx:save-note', async (_e, payload) => {
+    try {
+      const res = await apiRequest('POST', '/call-note', null, payload || {});
+      return { ok: !!(res && res.saved) };
+    } catch (err) {
+      console.warn('[3cx] Notiz speichern fehlgeschlagen:', err.message);
+      return { ok: false, error: err.message };
+    }
   });
 
   ipcMain.handle('threecx:get-sentinel-url', () => {
