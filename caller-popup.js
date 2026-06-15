@@ -45,14 +45,18 @@
       const projects = m.projects || [];
       if (projects.length) {
         const sel = current.matchedProject;
-        html += '<div class="field"><label>Projekt</label><select id="projSelect">';
+        // Standard "— kein Projekt —": Zuordnung erfolgt bewusst. Ohne Auswahl
+        // erscheint der Anruf nur im globalen Aktivitäten-Panel; mit Auswahl
+        // zusätzlich im Projekt-Feed.
+        html += '<div class="field"><label>Projekt (optional)</label><select id="projSelect">';
+        html += '<option value="">— kein Projekt —</option>';
         projects.forEach((p) => {
           const selected = (sel != null && String(sel) === String(p.id)) ? ' selected' : '';
           html += '<option value="' + esc(p.id) + '"' + selected + '>' + esc(p.title || ('Projekt #' + p.id)) + '</option>';
         });
         html += '</select></div>';
       } else {
-        html += '<div class="field"><label>Projekt</label><div style="font-size:12px;color:#86868b;">Kein Projekt vorhanden</div></div>';
+        html += '<div class="field"><label>Projekt</label><div style="font-size:12px;color:#86868b;">Kein aktives Projekt – Anruf erscheint im Aktivitäten-Panel und kann dort später zugeordnet werden.</div></div>';
       }
     } else {
       html += '<div class="name">' + esc(displayName || 'Unbekannter Anrufer') + '</div>';
