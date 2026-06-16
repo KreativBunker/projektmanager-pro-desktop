@@ -42,18 +42,6 @@
       html += '<div class="meta">Nummer: <span class="num">' + esc(phoneNumber || m.phone || '') + '</span></div>';
       if (m.contact_name) html += '<span class="contact-tag">Ansprechpartner: ' + esc(m.contact_name) + '</span>';
 
-      // Letzter dokumentierter Anrufgrund (beim erneuten Anruf direkt sichtbar).
-      if (m.last_note) {
-        html += '<div class="last-reason">';
-        html += '<div class="last-reason-label">Letzter Anrufgrund</div>';
-        html += '<div class="last-reason-text">' + esc(m.last_note) + '</div>';
-        const meta = [];
-        if (m.last_note_date) meta.push(m.last_note_date);
-        if (m.last_note_author) meta.push('dokumentiert von ' + m.last_note_author);
-        if (meta.length) html += '<div class="last-reason-meta">' + esc(meta.join(' · ')) + '</div>';
-        html += '</div>';
-      }
-
       const projects = m.projects || [];
       if (projects.length) {
         const sel = current.matchedProject;
@@ -75,6 +63,21 @@
       html += '<div class="firma">Kein Kontakt gefunden</div>';
       html += '<div class="meta">Nummer: <span class="num">' + esc(phoneNumber) + '</span></div>';
       html += '<div class="field"><label>Name (optional)</label><input type="text" id="nameInput" placeholder="Name des Anrufers"></div>';
+    }
+
+    // Letzter dokumentierter Anrufgrund – an der Nummer erkannt, daher auch bei
+    // unbekannten Anrufern sichtbar, sofern dieselbe Nummer schon einmal mit
+    // Anliegen erfasst wurde.
+    const lastCall = lookup.last_call;
+    if (lastCall && lastCall.note) {
+      html += '<div class="last-reason">';
+      html += '<div class="last-reason-label">Letzter Anrufgrund</div>';
+      html += '<div class="last-reason-text">' + esc(lastCall.note) + '</div>';
+      const meta = [];
+      if (lastCall.date) meta.push(lastCall.date);
+      if (lastCall.author) meta.push('dokumentiert von ' + lastCall.author);
+      if (meta.length) html += '<div class="last-reason-meta">' + esc(meta.join(' · ')) + '</div>';
+      html += '</div>';
     }
 
     html += '<div class="field"><label>Anliegen / Notiz</label><textarea id="noteInput" placeholder="Was wollte der Anrufer?"></textarea></div>';
