@@ -42,6 +42,18 @@
       html += '<div class="meta">Nummer: <span class="num">' + esc(phoneNumber || m.phone || '') + '</span></div>';
       if (m.contact_name) html += '<span class="contact-tag">Ansprechpartner: ' + esc(m.contact_name) + '</span>';
 
+      // Letzter dokumentierter Anrufgrund (beim erneuten Anruf direkt sichtbar).
+      if (m.last_note) {
+        html += '<div class="last-reason">';
+        html += '<div class="last-reason-label">Letzter Anrufgrund</div>';
+        html += '<div class="last-reason-text">' + esc(m.last_note) + '</div>';
+        const meta = [];
+        if (m.last_note_date) meta.push(m.last_note_date);
+        if (m.last_note_author) meta.push('dokumentiert von ' + m.last_note_author);
+        if (meta.length) html += '<div class="last-reason-meta">' + esc(meta.join(' · ')) + '</div>';
+        html += '</div>';
+      }
+
       const projects = m.projects || [];
       if (projects.length) {
         const sel = current.matchedProject;
