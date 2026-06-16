@@ -65,6 +65,21 @@
       html += '<div class="field"><label>Name (optional)</label><input type="text" id="nameInput" placeholder="Name des Anrufers"></div>';
     }
 
+    // Letzter dokumentierter Anrufgrund – an der Nummer erkannt, daher auch bei
+    // unbekannten Anrufern sichtbar, sofern dieselbe Nummer schon einmal mit
+    // Anliegen erfasst wurde.
+    const lastCall = lookup.last_call;
+    if (lastCall && lastCall.note) {
+      html += '<div class="last-reason">';
+      html += '<div class="last-reason-label">Letzter Anrufgrund</div>';
+      html += '<div class="last-reason-text">' + esc(lastCall.note) + '</div>';
+      const meta = [];
+      if (lastCall.date) meta.push(lastCall.date);
+      if (lastCall.author) meta.push('dokumentiert von ' + lastCall.author);
+      if (meta.length) html += '<div class="last-reason-meta">' + esc(meta.join(' · ')) + '</div>';
+      html += '</div>';
+    }
+
     html += '<div class="field"><label>Anliegen / Notiz</label><textarea id="noteInput" placeholder="Was wollte der Anrufer?"></textarea></div>';
     html += '<div class="status" id="callStatus"></div>';
     bodyEl.innerHTML = html;

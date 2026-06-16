@@ -14,6 +14,7 @@
 const { app, BrowserWindow, session, net, ipcMain, shell, screen } = require('electron');
 const path = require('path');
 const store = require('./store');
+const credentials = require('./credentials');
 
 const PARTITION_3CX = 'persist:3cx';
 const SENTINEL_HOST = 'pmp.local';
@@ -354,9 +355,15 @@ function init(injected) {
   });
 
   // Notiz/Name/Projekt zu einem Anruf speichern (-> Feed-Eintrag im CRM).
+  // Den WP-Login des angemeldeten Mitarbeiters mitsenden, damit der Server
+  // festhält, wer den Anrufgrund dokumentiert hat (Auth läuft über den API-Key,
+  // nicht über eine WP-Session).
   ipcMain.handle('threecx:save-note', async (_e, payload) => {
     try {
-      const res = await apiRequest('POST', '/call-note', null, payload || {});
+      const body = Object.assign({}, payload || {});
+      const creds = credentials.getCredentials();
+      if (creds && creds.username) body.author_login = creds.username;
+      const res = await apiRequest('POST', '/call-note', null, body);
       return { ok: !!(res && res.saved) };
     } catch (err) {
       console.warn('[3cx] Notiz speichern fehlgeschlagen:', err.message);
