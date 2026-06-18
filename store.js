@@ -12,6 +12,10 @@ const defaults = {
   notificationsEnabled: true,
   notificationSoundEnabled: true,
   autoLoginEnabled: false,
+  // WordPress-Login-Name (nicht geheim) – gespiegelt aus den verschlüsselten
+  // Zugangsdaten, damit Abläufe, die nur den Namen brauchen (z. B. „dokumentiert
+  // von" beim Anruf), keinen macOS-Schlüsselbund-Dialog auslösen.
+  authorLogin: '',
   windowBounds: { width: 1280, height: 800 },
   // 3CX-Integration
   threecxEnabled: false,
