@@ -3,6 +3,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('callerPopup', {
   // Empfängt die Anrufdaten vom Hauptprozess.
   onData: (callback) => ipcRenderer.on('threecx:data', (_event, data) => callback(data)),
+  // Signal: Der Anruf wurde an diesem Platz angenommen – Popup bleibt offen.
+  onAnswered: (callback) => ipcRenderer.on('threecx:answered', () => callback()),
   // Navigiert das Hauptfenster zur übergebenen URL (Kunde/Projekt/Neuanlage) und schließt das Popup.
   openUrl: (url) => ipcRenderer.invoke('threecx:open-url', url),
   // Speichert Notiz/Name/Projekt zu einem Anruf.
