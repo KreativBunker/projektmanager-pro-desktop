@@ -228,7 +228,10 @@ function showCallerPopup(payload) {
   // Auto-Ausblenden gilt nur für NICHT angenommene Anrufe. Wer das Gespräch hier
   // annimmt (oder mit dem Popup interagiert), behält es dauerhaft – das Ausblenden
   // wird in dem Fall abgebrochen (markCallAnswered bzw. IPC „keep-open").
-  const secs = parseInt(store.get('threecxPopupSeconds'), 10) || 20;
+  // Frühestens nach 1 Minute ausblenden (auch wenn ein älterer, kleinerer Wert
+  // gespeichert ist).
+  let secs = parseInt(store.get('threecxPopupSeconds'), 10);
+  if (isNaN(secs) || secs < 60) secs = 60;
   if (popupTimer) clearTimeout(popupTimer);
   popupTimer = setTimeout(() => {
     if (!popupAnswered && popupWindow && !popupWindow.isDestroyed()) popupWindow.hide();
