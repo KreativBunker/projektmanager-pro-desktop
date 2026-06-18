@@ -36,7 +36,7 @@
   elThreecxEnabled.checked = !!config.threecxEnabled;
   elThreecxUrl.value = config.threecxUrl || '';
   elThreecxApiKey.value = config.threecxApiKey || '';
-  elThreecxPopupSeconds.value = config.threecxPopupSeconds != null ? String(config.threecxPopupSeconds) : '20';
+  elThreecxPopupSeconds.value = config.threecxPopupSeconds != null ? String(config.threecxPopupSeconds) : '60';
   elThreecxAllowMedia.checked = !!config.threecxAllowMedia;
 
   function refreshThreecxFields() {
@@ -103,7 +103,10 @@
     btnSave.disabled = true;
 
     try {
-      const popupSecs = parseInt(elThreecxPopupSeconds.value, 10);
+      // Mindestens 60 Sekunden: das Popup soll frühestens nach 1 Minute
+      // ausblenden (gilt nur für nicht angenommene Anrufe).
+      let popupSecs = parseInt(elThreecxPopupSeconds.value, 10);
+      if (isNaN(popupSecs) || popupSecs < 60) popupSecs = 60;
       await window.pmpDesktop.saveConfig({
         siteUrl: siteUrl,
         downloadPath: elPath.value,
@@ -115,7 +118,7 @@
         threecxEnabled: elThreecxEnabled.checked,
         threecxUrl: elThreecxUrl.value.trim(),
         threecxApiKey: elThreecxApiKey.value.trim(),
-        threecxPopupSeconds: (!isNaN(popupSecs) && popupSecs > 0) ? popupSecs : 20,
+        threecxPopupSeconds: popupSecs,
         threecxAllowMedia: elThreecxAllowMedia.checked
       });
       elStatus.textContent = 'Gespeichert! App wird geladen…';

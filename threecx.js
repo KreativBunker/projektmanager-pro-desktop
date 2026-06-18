@@ -23,8 +23,14 @@ const SENTINEL_PATH = '/incoming-call';
 let phoneWindow = null;   // eingebetteter 3CX-Web-Client (versteckt)
 let popupWindow = null;   // natives Anrufer-Popup
 let popupTimer = null;
+let popupAnswered = false; // wurde der aktuelle Anruf an DIESEM Platz angenommen?
 let quitting = false;
 let initialized = false;
+
+// Eindeutiger Marker, mit dem der in den 3CX-Web-Client injizierte Detektor
+// (siehe attachCallStateDetector) per console.log meldet, dass diese
+// Nebenstelle gerade ein Gespräch verbunden hat.
+const CALL_ACTIVE_MARKER = '__PMP_3CX_CALL_ACTIVE__';
 
 // Vom Hauptprozess injizierte Helfer
 let helpers = {
@@ -157,14 +163,32 @@ function buildCreateCustomerUrl(phoneNumber) {
 
 function showCallerPopup(payload) {
   const W = 380, H = 420;
-  const wa = screen.getPrimaryDisplay().workArea;
+
+  // Position: Bildschirm unter dem Mauszeiger (aktiver Monitor) und oben mittig
+  // statt unten in der Ecke. So landet das Popup auf Mehrmonitor-Setups dort, wo
+  // gerade gearbeitet wird, und wird nicht so leicht übersehen.
+  let x, y;
+  try {
+    const wa = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
+    x = Math.round(wa.x + (wa.width - W) / 2);
+    y = Math.round(wa.y + 24);
+  } catch (_) {
+    const wa = screen.getPrimaryDisplay().workArea;
+    x = Math.round(wa.x + (wa.width - W) / 2);
+    y = Math.round(wa.y + 24);
+  }
+
+  // Jeder Anruf startet „nicht angenommen". Erst wenn dieser Platz das Gespräch
+  // verbindet (3CX-Detektor) oder der Nutzer mit dem Popup interagiert, bleibt es
+  // dauerhaft offen.
+  popupAnswered = false;
 
   if (!popupWindow || popupWindow.isDestroyed()) {
     popupWindow = new BrowserWindow({
       width: W,
       height: H,
-      x: wa.x + wa.width - W - 20,
-      y: wa.y + wa.height - H - 20,
+      x,
+      y,
       frame: false,
       resizable: false,
       movable: true,
@@ -182,6 +206,8 @@ function showCallerPopup(payload) {
     });
     popupWindow.loadFile(path.join(__dirname, 'caller-popup.html'));
     popupWindow.on('closed', () => { popupWindow = null; });
+  } else {
+    popupWindow.setPosition(x, y);
   }
 
   popupWindow.setAlwaysOnTop(true, 'screen-saver');
@@ -199,11 +225,30 @@ function showCallerPopup(payload) {
 
   popupWindow.showInactive();
 
-  const secs = parseInt(store.get('threecxPopupSeconds'), 10) || 20;
+  // Auto-Ausblenden gilt nur für NICHT angenommene Anrufe. Wer das Gespräch hier
+  // annimmt (oder mit dem Popup interagiert), behält es dauerhaft – das Ausblenden
+  // wird in dem Fall abgebrochen (markCallAnswered bzw. IPC „keep-open").
+  // Frühestens nach 1 Minute ausblenden (auch wenn ein älterer, kleinerer Wert
+  // gespeichert ist).
+  let secs = parseInt(store.get('threecxPopupSeconds'), 10);
+  if (isNaN(secs) || secs < 60) secs = 60;
   if (popupTimer) clearTimeout(popupTimer);
   popupTimer = setTimeout(() => {
-    if (popupWindow && !popupWindow.isDestroyed()) popupWindow.hide();
+    if (!popupAnswered && popupWindow && !popupWindow.isDestroyed()) popupWindow.hide();
   }, secs * 1000);
+}
+
+// Der Anruf wurde an DIESEM Platz angenommen → Popup offen halten. Greift nur,
+// solange das Popup zum aktuellen (klingelnden/gerade angenommenen) Anruf noch
+// sichtbar ist; so wird kein veraltetes Popup eines früheren Anrufs und kein
+// ausgehender Anruf fälschlich wiederbelebt.
+function markCallAnswered() {
+  if (!popupWindow || popupWindow.isDestroyed() || !popupWindow.isVisible()) return;
+  if (popupAnswered) return;
+  popupAnswered = true;
+  if (popupTimer) { clearTimeout(popupTimer); popupTimer = null; }
+  popupWindow.setAlwaysOnTop(true, 'screen-saver');
+  popupWindow.webContents.send('threecx:answered');
 }
 
 // ── Eingebettetes 3CX-Fenster ─────────────────────────────────
@@ -248,6 +293,55 @@ function attachInterceptors(wc) {
   wc.on('will-redirect', blockSentinel);
 }
 
+// ── Anruf-Status-Erkennung im eingebetteten 3CX-Web-Client ────
+//
+// Free-Tier-3CX meldet der App nur das Klingeln, nicht die Annahme. Damit das
+// Popup beim Annehmenden offen bleibt, beobachten wir den Web-Client selbst:
+// Ein in die Seite injizierter Detektor erkennt heuristisch, ob DIESE
+// Nebenstelle gerade ein Gespräch verbunden hat (sichtbarer „Auflegen"-Button
+// PLUS laufende Gesprächsdauer mm:ss), und meldet das per console.log-Marker.
+// Bewusst defensiv (lieber einmal nicht erkennen als fälschlich auslösen) – als
+// Rückfall dient die Interaktions-Erkennung im Popup selbst.
+function buildCallDetectorSource(marker) {
+  return '(function(){' +
+    'if(window.__pmpCallDetectorInstalled)return;' +
+    'window.__pmpCallDetectorInstalled=true;' +
+    'var MARKER=' + JSON.stringify(marker) + ';' +
+    'var active=false,prev={};' +
+    'function visible(el){if(!el)return false;var r=el.getBoundingClientRect();return r.width>0&&r.height>0;}' +
+    'function toSecs(t){var m=/^(\\d{1,2}):(\\d{2})(?::(\\d{2}))?$/.exec((t||"").trim());if(!m)return null;' +
+      'return m[3]!=null?(+m[1])*3600+(+m[2])*60+(+m[3]):(+m[1])*60+(+m[2]);}' +
+    'function hasHangup(){var sel=\'[aria-label*="hang" i],[aria-label*="end call" i],[aria-label*="auflegen" i],\'+' +
+      '\'[title*="auflegen" i],[title*="hang" i],[class*="hangup" i],[class*="end-call" i],[class*="endcall" i],\'+' +
+      '\'[data-qa*="hangup" i],[data-qa*="endcall" i]\';' +
+      'var n=document.querySelectorAll(sel);for(var i=0;i<n.length;i++){if(visible(n[i]))return true;}return false;}' +
+    'function ticking(){var all=document.querySelectorAll("span,div,p,td,label,bdi");var found=false,next={};' +
+      'for(var i=0;i<all.length;i++){var el=all[i];if(el.children&&el.children.length)continue;' +
+      'var s=toSecs(el.textContent);if(s==null||s>6*3600)continue;if(!visible(el))continue;next[i]=s;' +
+      'if(prev[i]!=null&&s>prev[i]&&(s-prev[i])<=3)found=true;}prev=next;return found;}' +
+    'function poll(){var inCall=false;if(hasHangup()){inCall=ticking();}else{prev={};}' +
+      'if(inCall&&!active){active=true;console.log(MARKER);}else if(!inCall){active=false;}}' +
+    'setInterval(poll,1000);' +
+  '})();';
+}
+
+function attachCallStateDetector(wc) {
+  wc.on('console-message', function () {
+    // Signatur je nach Electron-Version unterschiedlich: entweder
+    // (event, level, message, …) oder ein einzelnes Event-Objekt mit .message.
+    var msg = '';
+    for (var i = 0; i < arguments.length; i++) {
+      var a = arguments[i];
+      if (typeof a === 'string') { msg = a; break; }
+      if (a && typeof a === 'object' && typeof a.message === 'string') { msg = a.message; break; }
+    }
+    if (msg && msg.indexOf(CALL_ACTIVE_MARKER) !== -1) markCallAnswered();
+  });
+  wc.on('dom-ready', function () {
+    wc.executeJavaScript(buildCallDetectorSource(CALL_ACTIVE_MARKER)).catch(function () {});
+  });
+}
+
 function createPhoneWindow() {
   const url = normalizeUrl(store.get('threecxUrl'));
   if (!url) return null;
@@ -280,6 +374,7 @@ function createPhoneWindow() {
   phoneWindow.on('closed', () => { phoneWindow = null; });
 
   attachInterceptors(phoneWindow.webContents);
+  attachCallStateDetector(phoneWindow.webContents);
   phoneWindow.setMenuBarVisibility(false);
   phoneWindow.loadURL(url);
   return phoneWindow;

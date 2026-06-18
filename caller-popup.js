@@ -12,12 +12,27 @@
     }[c]));
   }
 
-  // Erste Interaktion -> Auto-Ausblenden abbrechen.
+  // Erste Interaktion -> Auto-Ausblenden abbrechen. Wer den Anruf annimmt und
+  // ihn dokumentiert, klickt/scrollt/tippt im Popup; ein bloßes Überfahren mit
+  // der Maus zählt bewusst NICHT, damit das Popup bei Nicht-Annahme weiterhin
+  // automatisch verschwindet.
   function markInteracted() {
     if (interacted) return;
     interacted = true;
     window.callerPopup.keepOpen();
   }
+
+  ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach((ev) => {
+    window.addEventListener(ev, markInteracted, { passive: true });
+  });
+
+  // Vom Hauptprozess gemeldete Annahme (3CX-Status) -> dauerhaft offen halten.
+  function showAnswered() {
+    interacted = true; // verhindert, dass irgendetwas das Popup noch ausblendet
+    const banner = document.getElementById('answeredBanner');
+    if (banner) banner.hidden = false;
+  }
+  window.callerPopup.onAnswered(showAnswered);
 
   function setStatus(msg, kind) {
     const el = document.getElementById('callStatus');
@@ -27,6 +42,8 @@
   function render(data) {
     current = data || {};
     interacted = false;
+    const banner = document.getElementById('answeredBanner');
+    if (banner) banner.hidden = true;
     const phoneNumber = current.phoneNumber || '';
     const displayName = current.displayName || '';
     const lookup = current.lookup || { found: false, matches: [] };

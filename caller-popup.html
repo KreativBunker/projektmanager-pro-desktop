@@ -79,6 +79,11 @@
     .status { font-size: 12px; margin-top: 8px; min-height: 16px; }
     .status.ok { color: #34c759; }
     .status.err { color: #ff3b30; }
+    .answered {
+      background: #e9f9ee; color: #1b7a3d; font-size: 12px; font-weight: 600;
+      padding: 6px 14px; border-bottom: 1px solid #cdeed7; flex: 0 0 auto;
+    }
+    .answered[hidden] { display: none; }
   </style>
 </head>
 <body>
@@ -89,6 +94,8 @@
     <span class="label">Eingehender Anruf</span>
     <div class="close" id="btnClose" title="Schließen">&times;</div>
   </div>
+
+  <div class="answered" id="answeredBanner" hidden>✓ Anruf angenommen – Popup bleibt geöffnet</div>
 
   <div class="body" id="body">
     <div class="name">Anruf…</div>
