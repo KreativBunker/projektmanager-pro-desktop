@@ -79,6 +79,26 @@ npm run build:mac
 Ohne diese Variablen entsteht weiterhin ein unsignierter (lokal lauffähiger)
 Build.
 
+## „Dennoch öffnen" funktioniert nicht / App ist „beschädigt"
+
+Eine **nicht notarisierte** App bekommt beim Download das macOS-Quarantäne-
+Attribut. Auf Apple Silicon meldet macOS dann oft „… ist beschädigt und kann
+nicht geöffnet werden" – und „Dennoch öffnen" hilft nicht. Das ist **kein**
+echter Schaden, sondern Gatekeeper.
+
+**Sofort-Workaround** (bis die Notarisierung eingerichtet ist): App in den Ordner
+`Programme` verschieben und im Terminal das Quarantäne-Attribut entfernen:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/ProjektManager Pro.app"
+```
+
+Danach lässt sich die App normal per Doppelklick starten.
+
+> Lasting fix: Sobald die oben genannten Secrets gesetzt sind, ist die App
+> Developer-ID-signiert **und notarisiert** – dann entfällt der Dialog komplett,
+> ganz ohne Terminal.
+
 ## Prüfen, ob es funktioniert hat
 
 ```bash
