@@ -4,23 +4,6 @@
 // ============================================================
 
 const path = require('path');
-const { execFile } = require('child_process');
-
-// App nach der Notarisierung stapeln, damit Gatekeeper sie auch ohne
-// Internetverbindung beim ersten Start akzeptiert. Fehler hier brechen den
-// Build bewusst NICHT ab – die App ist auch ohne Stapling notarisiert.
-function staple(appPath) {
-  return new Promise((resolve) => {
-    execFile('xcrun', ['stapler', 'staple', appPath], (err, _stdout, stderr) => {
-      if (err) {
-        console.warn('Stapling fehlgeschlagen (nicht kritisch):', stderr || err.message);
-      } else {
-        console.log('Stapling erfolgreich.');
-      }
-      resolve();
-    });
-  });
-}
 
 exports.default = async function notarizing(context) {
   const { electronPlatformName, appOutDir } = context;
@@ -57,6 +40,4 @@ exports.default = async function notarizing(context) {
   });
 
   console.log(`Notarisierung erfolgreich: ${appName}`);
-
-  await staple(appPath);
 };

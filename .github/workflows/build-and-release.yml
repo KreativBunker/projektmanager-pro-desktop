@@ -126,23 +126,15 @@ jobs:
         run: |
           # Leere Zertifikat-Umgebungsvariablen entfernen, damit electron-builder
           # den leeren String nicht als Dateipfad interpretiert ("not a file"-Fehler)
-          EXTRA_ARGS=""
           if [ -z "$CSC_LINK" ]; then
             unset CSC_LINK
             unset CSC_KEY_PASSWORD
-            # macOS ohne Developer-ID-Zertifikat: Ad-hoc signieren. Sonst ist die
-            # App auf Apple Silicon nach dem Download "beschädigt" und lässt sich
-            # nicht einmal per "Dennoch öffnen" starten. Mit Zertifikat greift
-            # stattdessen die echte Developer-ID-Signatur + Notarisierung.
-            if [ "${{ matrix.platform }}" = "mac" ]; then
-              EXTRA_ARGS="-c.mac.identity=-"
-            fi
           fi
           if [ -z "$WIN_CSC_LINK" ]; then
             unset WIN_CSC_LINK
             unset WIN_CSC_KEY_PASSWORD
           fi
-          npx electron-builder --${{ matrix.platform }} $EXTRA_ARGS --publish never
+          npx electron-builder --${{ matrix.platform }} --publish never
 
       - name: List built files
         shell: bash
