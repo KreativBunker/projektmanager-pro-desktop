@@ -453,11 +453,14 @@ function init(injected) {
   // Den WP-Login des angemeldeten Mitarbeiters mitsenden, damit der Server
   // festhält, wer den Anrufgrund dokumentiert hat (Auth läuft über den API-Key,
   // nicht über eine WP-Session).
+  // Bewusst nur den Klartext-Login (getAuthorLogin) lesen – NICHT die
+  // verschlüsselten Zugangsdaten entschlüsseln. Sonst würde macOS bei jedem
+  // Speichern einer Anruf-Notiz den Schlüsselbund-Passwortdialog zeigen.
   ipcMain.handle('threecx:save-note', async (_e, payload) => {
     try {
       const body = Object.assign({}, payload || {});
-      const creds = credentials.getCredentials();
-      if (creds && creds.username) body.author_login = creds.username;
+      const authorLogin = credentials.getAuthorLogin();
+      if (authorLogin) body.author_login = authorLogin;
       const res = await apiRequest('POST', '/call-note', null, body);
       return { ok: !!(res && res.saved) };
     } catch (err) {
