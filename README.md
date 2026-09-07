@@ -36,6 +36,25 @@ Die App prüft beim Start automatisch auf neue Versionen. Wenn ein Update verfü
 - **Externe Links**: Werden automatisch im Standard-Browser geöffnet.
 - **Automatische Updates**: Die App prüft beim Start auf neue Versionen.
 
+## 3CX-Telefonie (zweiter Tab)
+
+Bei aktivierter 3CX-Integration (Einstellungen → 3CX-Telefonie) zeigt das Hauptfenster eine Tab-Leiste:
+
+- **ProjektManager** – die WordPress-Anwendung wie bisher (`Strg/Cmd+1`)
+- **Telefon (3CX)** – der eingebettete 3CX-Web-Client (`Strg/Cmd+2`)
+
+Der Web-Client läuft auch im Hintergrund weiter, wenn der ProjektManager-Tab aktiv ist, damit eingehende Anrufe erkannt werden. Rechts in der Tab-Leiste steht dauerhaft der **Verbindungsstatus zur Telefonanlage**:
+
+| Status | Bedeutung |
+|---|---|
+| 🟢 Verbunden | Web-Client geladen, Telefonanlage erreichbar |
+| 🟡 Verbinde… | Web-Client wird geladen |
+| 🟡 Anmeldung erforderlich | Der Web-Client zeigt die Login-Seite – ohne Anmeldung keine Anruferkennung |
+| 🔴 Keine Verbindung | Telefonanlage nicht erreichbar, Ladefehler oder Verbindungsverlust im Web-Client |
+| 🔴 Fehler | Web-Client abgestürzt/hängt – wird automatisch neu gestartet |
+
+Bei Ausfall verbindet die App automatisch neu (5 s … 60 s Abstand), prüft alle 30 s die Erreichbarkeit der Anlage und zeigt im Telefon-Tab einen Hinweis mit „Jetzt neu verbinden". Beim Übergang von „Verbunden" zu „Keine Verbindung" erscheint einmalig eine Systembenachrichtigung. Das Schließen des Hauptfensters versteckt es bei aktiver 3CX-Integration nur (Telefon läuft weiter); Beenden über Menü oder Tray.
+
 ## Für Entwickler
 
 ### Voraussetzungen

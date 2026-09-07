@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell, dialog, ipcMain, Notification, Tray, nativeImage, session } = require('electron');
+const { app, BrowserWindow, WebContentsView, Menu, shell, dialog, ipcMain, Notification, Tray, nativeImage, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { net } = require('electron');
@@ -9,11 +9,21 @@ const threecx = require('./threecx');
 // Persistent session partition – keeps cookies (and thus WordPress login) across app restarts
 const PERSIST_PARTITION = 'persist:pmp';
 
-let mainWindow = null;
+let mainWindow = null;   // Hauptfenster (Tab-Leiste, shell.html)
+let siteView = null;     // eingebettete ProjektManager-Ansicht (WordPress)
 let setupWindow = null;
 let configWindow = null;
 let tray = null;
 let lastAutoLoginAt = 0;
+let activeTab = 'site';  // 'site' | 'phone'
+let isQuitting = false;
+
+// Layout des Hauptfensters: Tab-Leiste oben (nur bei aktivierter 3CX-Integration),
+// darunter die aktive Ansicht. Muss zu den CSS-Werten in shell.html passen.
+const TAB_BAR_HEIGHT = 40;
+const PHONE_BANNER_HEIGHT = 36;
+
+app.on('before-quit', () => { isQuitting = true; });
 
 // ── App Lifecycle ─────────────────────────────────────────────
 
@@ -42,8 +52,9 @@ if (!gotSingleLock) {
   app.quit();
 } else {
   app.on('second-instance', (_event, argv) => {
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
       if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
       mainWindow.focus();
     }
     const url = argv.find((a) => typeof a === 'string' && a.startsWith(PMP_PROTOCOL + '://'));
@@ -104,6 +115,11 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.show();
+    mainWindow.focus();
+    return;
+  }
   if (BrowserWindow.getAllWindows().length === 0) {
     const config = store.load();
     if (!config.setupCompleted || !config.siteUrl) {
@@ -156,6 +172,7 @@ function openSetupWizard() {
 
 function createMainWindow() {
   if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.show();
     mainWindow.focus();
     return;
   }
@@ -163,6 +180,9 @@ function createMainWindow() {
   const bounds = store.get('windowBounds') || { width: 1280, height: 800 };
   const siteUrl = store.get('siteUrl');
 
+  // Das Hauptfenster selbst zeigt nur die Tab-Leiste (shell.html). Die Inhalte
+  // (ProjektManager-Website und 3CX-Web-Client) sind eingebettete Ansichten,
+  // die darunter angeordnet und per Tab umgeschaltet werden.
   mainWindow = new BrowserWindow({
     width: bounds.width,
     height: bounds.height,
@@ -170,17 +190,31 @@ function createMainWindow() {
     y: bounds.y,
     title: 'ProjektManager Pro',
     icon: getIconPath(),
+    backgroundColor: '#1e1e1e',
+    webPreferences: {
+      preload: path.join(__dirname, 'shell-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    },
+    show: false
+  });
+
+  mainWindow.once('ready-to-show', () => mainWindow.show());
+  mainWindow.loadFile(path.join(__dirname, 'shell.html'));
+
+  siteView = new WebContentsView({
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
       spellcheck: true,
       partition: PERSIST_PARTITION
-    },
-    show: false
+    }
   });
-
-  mainWindow.once('ready-to-show', () => mainWindow.show());
+  mainWindow.contentView.addChildView(siteView);
+  siteView.webContents.on('page-title-updated', (_e, title) => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setTitle(title || 'ProjektManager Pro');
+  });
 
   // Save window bounds on resize/move
   const saveBounds = () => {
@@ -188,9 +222,27 @@ function createMainWindow() {
       store.set('windowBounds', mainWindow.getBounds());
     }
   };
-  mainWindow.on('resize', saveBounds);
+  mainWindow.on('resize', () => { saveBounds(); layoutViews(); });
   mainWindow.on('move', saveBounds);
-  mainWindow.on('closed', () => { mainWindow = null; });
+  mainWindow.on('maximize', layoutViews);
+  mainWindow.on('unmaximize', layoutViews);
+  mainWindow.on('enter-full-screen', layoutViews);
+  mainWindow.on('leave-full-screen', layoutViews);
+
+  // Bei aktiver 3CX-Integration wird das Fenster beim Schließen nur versteckt,
+  // damit der Web-Client (und damit die Anruferkennung) im Hintergrund
+  // weiterläuft. Beenden über Menü/Tray. Ohne 3CX bleibt das alte Verhalten.
+  mainWindow.on('close', (e) => {
+    if (!isQuitting && threecx.isEnabled()) {
+      e.preventDefault();
+      mainWindow.hide();
+    }
+  });
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+    siteView = null;
+    threecx.onMainWindowClosed();
+  });
 
   if (siteUrl) {
     loadSite(siteUrl);
@@ -198,32 +250,114 @@ function createMainWindow() {
   buildMenu();
   createTray();
 
-  // 3CX-Integration initialisieren (eingebetteter Web-Client + Anrufer-Popup).
+  // 3CX-Integration initialisieren (eingebetteter Web-Client als zweiter Tab
+  // + Anrufer-Popup + Verbindungs-Monitor).
   threecx.init({
     getIconPath,
     openInMainWindow,
+    getMainWindow: () => mainWindow,
+    onStatusChange: onPhoneStatusChange,
+    notify: showSystemNotification,
   });
+
+  if (activeTab === 'phone' && !threecx.isEnabled()) activeTab = 'site';
+  layoutViews();
+  sendShellState();
 }
 
-// Navigiert das Hauptfenster zur übergebenen URL (z. B. Kunde/Projekt aus dem
-// Anrufer-Popup) und bringt es in den Vordergrund.
+// ── Tabs / Layout ─────────────────────────────────────────────
+
+function isTabBarVisible() {
+  return threecx.isEnabled();
+}
+
+// Ordnet die eingebetteten Ansichten unterhalb der Tab-Leiste an und blendet
+// die jeweils inaktive aus (sie läuft im Hintergrund weiter).
+function layoutViews() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const { width, height } = mainWindow.getContentBounds();
+  const top = isTabBarVisible() ? TAB_BAR_HEIGHT : 0;
+  const area = { x: 0, y: top, width: Math.max(0, width), height: Math.max(0, height - top) };
+
+  if (siteView) {
+    try {
+      siteView.setBounds(area);
+      siteView.setVisible(activeTab === 'site');
+    } catch (_) {}
+  }
+  threecx.layoutPhoneView(area, activeTab === 'phone', PHONE_BANNER_HEIGHT);
+}
+
+function selectTab(tab) {
+  if (tab !== 'site' && tab !== 'phone') return;
+  if (tab === 'phone' && !threecx.isEnabled()) tab = 'site';
+  activeTab = tab;
+  layoutViews();
+  sendShellState();
+  // Fokus in die aktive Ansicht, damit Tastatur/Menürollen (Kopieren, Neu
+  // laden, Zoom) dort wirken.
+  if (tab === 'site' && siteView) { try { siteView.webContents.focus(); } catch (_) {} }
+  if (tab === 'phone') threecx.focusPhone();
+  updateTrayMenu();
+}
+
+function showPhoneTab() {
+  if (!mainWindow || mainWindow.isDestroyed()) createMainWindow();
+  if (!mainWindow) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+  selectTab('phone');
+}
+
+function getShellState() {
+  return {
+    activeTab,
+    tabBarVisible: isTabBarVisible(),
+    status: threecx.getStatus(),
+  };
+}
+
+function sendShellState() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  try { mainWindow.webContents.send('shell:state', getShellState()); } catch (_) {}
+}
+
+function onPhoneStatusChange() {
+  sendShellState();
+  updateTrayMenu();
+}
+
+// webContents der gerade sichtbaren Ansicht (für Menüaktionen wie Neu laden).
+function activeWebContents() {
+  if (activeTab === 'phone') {
+    const wc = threecx.getPhoneWebContents();
+    if (wc) return wc;
+  }
+  return siteView ? siteView.webContents : null;
+}
+
+// Navigiert die ProjektManager-Ansicht zur übergebenen URL (z. B. Kunde/Projekt
+// aus dem Anrufer-Popup) und bringt das Fenster in den Vordergrund.
 function openInMainWindow(url) {
   if (!mainWindow || mainWindow.isDestroyed()) {
     createMainWindow();
   }
-  if (!mainWindow) return;
+  if (!mainWindow || !siteView) return;
   try {
-    mainWindow.webContents.loadURL(url);
+    siteView.webContents.loadURL(url);
   } catch (_) {}
   if (mainWindow.isMinimized()) mainWindow.restore();
   mainWindow.show();
   mainWindow.focus();
+  selectTab('site');
 }
 
 // ── Load Site ─────────────────────────────────────────────────
 
 function loadSite(url) {
-  if (!mainWindow) return;
+  if (!mainWindow || !siteView) return;
+  const wc = siteView.webContents;
 
   let normalizedUrl = url;
   if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
@@ -233,20 +367,20 @@ function loadSite(url) {
   // Identify as PM-Pro desktop client so the WordPress plugin can apply
   // desktop-specific behaviour (e.g. long-lived auth cookies).
   try {
-    const baseUa = mainWindow.webContents.getUserAgent();
+    const baseUa = wc.getUserAgent();
     if (baseUa.indexOf('PMPDesktop/') === -1) {
-      mainWindow.webContents.setUserAgent(`${baseUa} PMPDesktop/${app.getVersion()}`);
+      wc.setUserAgent(`${baseUa} PMPDesktop/${app.getVersion()}`);
     }
   } catch (_) {}
 
-  mainWindow.loadURL(normalizedUrl);
+  wc.loadURL(normalizedUrl);
 
   // Auto-login / credential capture on the WordPress login page.
-  mainWindow.webContents.removeAllListeners('did-finish-load');
-  mainWindow.webContents.on('did-finish-load', () => handleLoginPage(normalizedUrl));
+  wc.removeAllListeners('did-finish-load');
+  wc.on('did-finish-load', () => handleLoginPage(normalizedUrl));
 
   // Handle file downloads – save locally and open
-  const ses = mainWindow.webContents.session;
+  const ses = wc.session;
   ses.removeAllListeners('will-download');
   ses.on('will-download', (_event, item) => {
     const downloadPath = store.get('downloadPath') || app.getPath('downloads');
@@ -273,7 +407,7 @@ function loadSite(url) {
   });
 
   // Open external links in system browser
-  mainWindow.webContents.setWindowOpenHandler(({ url: linkUrl }) => {
+  wc.setWindowOpenHandler(({ url: linkUrl }) => {
     try {
       const siteOrigin = new URL(normalizedUrl).origin;
       if (linkUrl.startsWith(siteOrigin)) {
@@ -285,7 +419,8 @@ function loadSite(url) {
   });
 
   // Handle navigation to external sites
-  mainWindow.webContents.on('will-navigate', (event, navUrl) => {
+  wc.removeAllListeners('will-navigate');
+  wc.on('will-navigate', (event, navUrl) => {
     try {
       const siteOrigin = new URL(normalizedUrl).origin;
       if (!navUrl.startsWith(siteOrigin)) {
@@ -299,9 +434,10 @@ function loadSite(url) {
 // ── Auto-Login ────────────────────────────────────────────────
 
 async function handleLoginPage(siteBaseUrl) {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (!mainWindow || mainWindow.isDestroyed() || !siteView) return;
+  const wc = siteView.webContents;
 
-  const currentUrl = mainWindow.webContents.getURL();
+  const currentUrl = wc.getURL();
   let current, siteOrigin;
   try {
     current = new URL(currentUrl);
@@ -342,7 +478,7 @@ async function handleLoginPage(siteBaseUrl) {
       });
     })();
   `;
-  try { await mainWindow.webContents.executeJavaScript(captureScript, true); } catch (_) {}
+  try { await wc.executeJavaScript(captureScript, true); } catch (_) {}
 
   // 2) Try auto-login if credentials are stored and we didn't just try.
   const now = Date.now();
@@ -372,7 +508,7 @@ async function handleLoginPage(siteBaseUrl) {
       form.submit();
     })();
   `;
-  try { await mainWindow.webContents.executeJavaScript(fillScript, true); } catch (_) {}
+  try { await wc.executeJavaScript(fillScript, true); } catch (_) {}
 }
 
 // ── Config Window ─────────────────────────────────────────────
@@ -419,8 +555,10 @@ function createTray() {
     tray = new Tray(icon);
     tray.setToolTip('ProjektManager Pro');
     tray.on('click', () => {
-      if (mainWindow) {
+      if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.isVisible() ? mainWindow.focus() : mainWindow.show();
+      } else {
+        createMainWindow();
       }
     });
     updateTrayMenu();
@@ -429,22 +567,30 @@ function createTray() {
   }
 }
 
-// Baut das Kontextmenü des Tray-Icons (inkl. 3CX-Telefon-Umschalter).
+// Baut das Kontextmenü des Tray-Icons (inkl. 3CX-Telefon-Tab und -Status).
 function updateTrayMenu() {
   if (!tray || tray.isDestroyed()) return;
-  const threecxEnabled = !!store.get('threecxEnabled');
+  const threecxEnabled = threecx.isEnabled();
   const items = [
     {
       label: 'ProjektManager öffnen',
-      click: () => { if (mainWindow) { mainWindow.show(); mainWindow.focus(); } }
+      click: () => {
+        if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.show(); mainWindow.focus(); selectTab('site'); }
+        else createMainWindow();
+      }
     },
   ];
   if (threecxEnabled) {
+    const st = threecx.getStatus();
     items.push({ type: 'separator' });
-    items.push({
-      label: threecx.isPhoneVisible() ? 'Telefon ausblenden' : 'Telefon anzeigen',
-      click: () => { threecx.togglePhoneWindow(); updateTrayMenu(); }
-    });
+    items.push({ label: 'Telefon (3CX) anzeigen', click: () => showPhoneTab() });
+    items.push({ label: `Telefonanlage: ${st.label}`, enabled: false });
+    if (st.state === 'offline' || st.state === 'error' || st.state === 'login') {
+      items.push({ label: 'Telefon neu verbinden', click: () => threecx.reconnect() });
+    }
+    try {
+      tray.setToolTip(st.state === 'online' ? 'ProjektManager Pro' : `ProjektManager Pro – Telefonanlage: ${st.label}`);
+    } catch (_) {}
   }
   items.push({ type: 'separator' });
   items.push({ label: 'Einstellungen…', click: () => openConfigWindow() });
@@ -538,8 +684,38 @@ function buildMenu() {
     {
       label: 'Ansicht',
       submenu: [
-        { role: 'reload', label: 'Neu laden' },
-        { role: 'forceReload', label: 'Erzwungenes Neuladen' },
+        {
+          label: 'ProjektManager',
+          accelerator: 'CmdOrCtrl+1',
+          click: () => selectTab('site')
+        },
+        {
+          label: 'Telefon (3CX)',
+          accelerator: 'CmdOrCtrl+2',
+          enabled: threecx.isEnabled(),
+          click: () => showPhoneTab()
+        },
+        {
+          label: 'Telefon neu verbinden',
+          enabled: threecx.isEnabled(),
+          click: () => threecx.reconnect()
+        },
+        { type: 'separator' },
+        {
+          label: 'Neu laden',
+          accelerator: 'CmdOrCtrl+R',
+          click: () => { const wc = activeWebContents(); if (wc) wc.reload(); }
+        },
+        {
+          label: 'Erzwungenes Neuladen',
+          accelerator: 'CmdOrCtrl+Shift+R',
+          click: () => { const wc = activeWebContents(); if (wc) wc.reloadIgnoringCache(); }
+        },
+        {
+          label: 'Entwicklerwerkzeuge',
+          accelerator: isMac ? 'Alt+Command+I' : 'Ctrl+Shift+I',
+          click: () => { const wc = activeWebContents(); if (wc) wc.toggleDevTools(); }
+        },
         { type: 'separator' },
         { role: 'resetZoom', label: 'Originalgröße' },
         { role: 'zoomIn', label: 'Vergrößern' },
@@ -801,9 +977,28 @@ ipcMain.handle('save-config', (_event, config) => {
     buildMenu();
   }
 
-  // 3CX-Integration nach Konfigurationsänderung neu anwenden.
+  // 3CX-Integration nach Konfigurationsänderung neu anwenden (Tab-Leiste
+  // ein-/ausblenden, Web-Client laden/entladen, Menü aktualisieren).
   threecx.applyConfig();
+  if (activeTab === 'phone' && !threecx.isEnabled()) activeTab = 'site';
+  layoutViews();
+  sendShellState();
+  buildMenu();
   updateTrayMenu();
+  return true;
+});
+
+// ── Tab-Leiste (shell.html) ───────────────────────────────────
+
+ipcMain.handle('shell:select-tab', (_event, tab) => {
+  selectTab(tab);
+  return getShellState();
+});
+
+ipcMain.handle('shell:get-state', () => getShellState());
+
+ipcMain.handle('shell:open-settings', () => {
+  openConfigWindow();
   return true;
 });
 
@@ -1009,6 +1204,23 @@ function updateTrayBadge(count) {
   }
 }
 
+// Systembenachrichtigung ohne Klick-Navigation (z. B. Verbindungsverlust 3CX).
+function showSystemNotification(data) {
+  const config = store.load();
+  if (!config.notificationsEnabled) return false;
+  if (!Notification.isSupported()) return false;
+  const n = new Notification({
+    title: data && data.title ? String(data.title) : 'ProjektManager Pro',
+    body: data && data.body ? String(data.body) : '',
+    icon: getIconPath(),
+    silent: true
+  });
+  n.on('click', () => showPhoneTab());
+  n.show();
+  playNotificationSound();
+  return true;
+}
+
 ipcMain.handle('show-notification', (_event, data) => {
   const config = store.load();
   if (!config.notificationsEnabled) return false;
@@ -1029,9 +1241,10 @@ ipcMain.handle('show-notification', (_event, data) => {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.show();
       mainWindow.focus();
+      selectTab('site');
       // Send navigation data to the web content
-      if (data && (data.type || data.roomId || data.url)) {
-        mainWindow.webContents.send('notification-navigate', {
+      if (siteView && data && (data.type || data.roomId || data.url)) {
+        siteView.webContents.send('notification-navigate', {
           type: data.type || 'general',
           roomId: data.roomId || null,
           projectId: data.projectId || null,
