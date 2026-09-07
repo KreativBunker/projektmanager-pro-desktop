@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+  <title>ProjektManager Pro</title>
+  <style>
+    :root {
+      --bar-h: 40px;
+      --banner-h: 36px;
+      --bg: #1e1e1e;
+      --bg-tab: #2a2a2a;
+      --bg-tab-active: #3a3a3a;
+      --fg: #f2f2f2;
+      --fg-dim: #a0a0a0;
+      --border: #3c3c3c;
+      --ok: #34c759;
+      --warn: #ffcc00;
+      --bad: #ff453a;
+      --info: #0a84ff;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; user-select: none; }
+
+    /* ── Tab-Leiste ─────────────────────────────────────────── */
+    #tabbar { position: absolute; top: 0; left: 0; right: 0; height: var(--bar-h); display: flex; align-items: stretch;
+      background: var(--bg); border-bottom: 1px solid var(--border); }
+    body.no-tabs #tabbar { display: none; }
+    .tab { display: flex; align-items: center; gap: 8px; padding: 0 16px; margin: 6px 0 0 6px; border-radius: 8px 8px 0 0;
+      background: var(--bg-tab); color: var(--fg-dim); cursor: pointer; border: 1px solid transparent; border-bottom: none; white-space: nowrap; }
+    .tab:hover { color: var(--fg); }
+    .tab.active { background: var(--bg-tab-active); color: var(--fg); border-color: var(--border); }
+    .tab .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--fg-dim); flex: none; }
+    .tab .dot.online { background: var(--ok); }
+    .tab .dot.connecting { background: var(--warn); animation: pulse 1s infinite alternate; }
+    .tab .dot.login { background: var(--warn); }
+    .tab .dot.offline, .tab .dot.error { background: var(--bad); animation: pulse 0.7s infinite alternate; }
+    .tab .dot.disabled { background: var(--fg-dim); }
+    .tab .sub { font-size: 11px; color: var(--fg-dim); }
+    .tab.active .sub { color: var(--fg); }
+    .tab .sub.offline, .tab .sub.error { color: var(--bad); font-weight: 600; }
+    .tab .sub.login { color: var(--warn); }
+    @keyframes pulse { from { opacity: 1; } to { opacity: 0.35; } }
+
+    #spacer { flex: 1; -webkit-app-region: drag; }
+    #statuspill { display: flex; align-items: center; gap: 8px; padding: 0 14px; font-size: 12px; color: var(--fg-dim); }
+    #statuspill .dot { width: 9px; height: 9px; border-radius: 50%; }
+    #statuspill.offline, #statuspill.error { color: var(--bad); font-weight: 600; }
+    #statuspill.login { color: var(--warn); }
+    #statuspill.online { color: var(--ok); }
+    #statuspill .dot.online { background: var(--ok); }
+    #statuspill .dot.connecting { background: var(--warn); }
+    #statuspill .dot.login { background: var(--warn); }
+    #statuspill .dot.offline, #statuspill .dot.error { background: var(--bad); animation: pulse 0.7s infinite alternate; }
+    #statuspill .dot.disabled { background: var(--fg-dim); }
+    #statuspill button { margin-left: 4px; }
+
+    /* ── Inhalt unterhalb der Tab-Leiste ─────────────────────── */
+    #content { position: absolute; top: var(--bar-h); left: 0; right: 0; bottom: 0; }
+    body.no-tabs #content { top: 0; }
+
+    /* Banner (oberhalb der eingebetteten 3CX-Ansicht) */
+    #banner { display: none; height: var(--banner-h); align-items: center; gap: 12px; padding: 0 14px; font-size: 13px;
+      background: #4a1a18; color: #ffd6d3; border-bottom: 1px solid #7a2b27; }
+    #banner.login, #banner.connecting { background: #4a3d0f; color: #fff0b3; border-bottom-color: #7a6520; }
+    #banner .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--bad); flex: none; }
+    #banner.login .dot, #banner.connecting .dot { background: var(--warn); }
+    #banner .text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    body.show-banner #banner { display: flex; }
+
+    /* Platzhalter (wenn die 3CX-Ansicht nicht angezeigt werden kann) */
+    #placeholder { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; padding: 24px; }
+    body.show-placeholder #placeholder { display: flex; }
+    .card { width: min(560px, 100%); background: var(--bg-tab); border: 1px solid var(--border); border-radius: 12px; padding: 28px 28px 24px; }
+    .card .head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .card .head .big { width: 14px; height: 14px; border-radius: 50%; background: var(--bad); flex: none; }
+    .card.disabled .head .big { background: var(--fg-dim); }
+    .card.connecting .head .big { background: var(--warn); animation: pulse 1s infinite alternate; }
+    .card.offline .head .big, .card.error .head .big { animation: pulse 0.7s infinite alternate; }
+    .card h1 { margin: 0; font-size: 18px; font-weight: 600; }
+    .card p { margin: 6px 0; color: var(--fg-dim); line-height: 1.45; }
+    .card p.detail { color: var(--fg); }
+    .card .meta { font-size: 12px; color: var(--fg-dim); margin-top: 10px; }
+    .card .actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+
+    button { font: inherit; padding: 7px 14px; border-radius: 7px; border: 1px solid var(--border); background: #444; color: var(--fg); cursor: pointer; }
+    button:hover { background: #505050; }
+    button.primary { background: var(--info); border-color: var(--info); }
+    button.primary:hover { background: #2a94ff; }
+    button.small { padding: 3px 9px; font-size: 11px; }
+  </style>
+</head>
+<body class="no-tabs">
+  <div id="tabbar">
+    <div class="tab active" id="tabSite" data-tab="site" title="ProjektManager (Strg/Cmd+1)">
+      <span>ProjektManager</span>
+    </div>
+    <div class="tab" id="tabPhone" data-tab="phone" title="3CX-Telefon (Strg/Cmd+2)">
+      <span class="dot" id="phoneDot"></span>
+      <span>Telefon (3CX)</span>
+      <span class="sub" id="phoneSub"></span>
+    </div>
+    <div id="spacer"></div>
+    <div id="statuspill" title="Verbindung zur Telefonanlage">
+      <span class="dot" id="pillDot"></span>
+      <span id="pillText"></span>
+      <button class="small" id="pillReconnect" hidden>Neu verbinden</button>
+    </div>
+  </div>
+
+  <div id="content">
+    <div id="banner">
+      <span class="dot"></span>
+      <span class="text" id="bannerText"></span>
+      <button class="small" id="bannerReconnect">Neu verbinden</button>
+    </div>
+
+    <div id="placeholder">
+      <div class="card" id="card">
+        <div class="head">
+          <span class="big"></span>
+          <h1 id="cardTitle">Keine Verbindung zur Telefonanlage</h1>
+        </div>
+        <p class="detail" id="cardDetail"></p>
+        <p id="cardHint"></p>
+        <div class="meta" id="cardMeta"></div>
+        <div class="actions">
+          <button class="primary" id="cardReconnect">Jetzt neu verbinden</button>
+          <button id="cardSettings">3CX-Einstellungen…</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="shell.js"></script>
+</body>
+</html>

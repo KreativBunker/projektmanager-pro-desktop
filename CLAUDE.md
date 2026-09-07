@@ -14,7 +14,10 @@ Electron-basierte Desktop-App für ProjektManager Pro (WordPress). Unterstützt 
 ## Projektstruktur
 
 - `main.js` – Electron Hauptprozess
-- `preload.js` – Sicherheitsbrücke (Context Bridge)
+- `preload.js` – Sicherheitsbrücke (Context Bridge) für die ProjektManager-Ansicht
+- `shell.html` / `shell.js` / `shell-preload.js` – Tab-Leiste des Hauptfensters (ProjektManager | Telefon 3CX) inkl. Verbindungsstatus
+- `threecx.js` – 3CX-Integration (eingebetteter Web-Client, Verbindungs-Monitor, Anrufer-Popup)
+- `caller-popup.*` – natives Anrufer-Popup
 - `setup.js` / `setup.html` – Einrichtungsassistent
 - `config.js` / `config.html` – Einstellungsfenster
 - `store.js` – Konfigurationsspeicher (JSON)
