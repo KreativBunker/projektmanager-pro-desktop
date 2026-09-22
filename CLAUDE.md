@@ -21,7 +21,7 @@ Electron-basierte Desktop-App für ProjektManager Pro (WordPress). Unterstützt 
 - `setup.js` / `setup.html` – Einrichtungsassistent
 - `config.js` / `config.html` – Einstellungsfenster
 - `store.js` – Konfigurationsspeicher (JSON)
-- `electron-builder.js` – Build-Konfiguration (ersetzt `build` in `package.json`; macOS-Signierung abhängig von Zertifikat, siehe `SIGNING.md`)
+- `electron-builder.config.js` – Build-Konfiguration (eingebunden über `build.extends` in `package.json`; macOS-Signierung abhängig von Zertifikat, siehe `SIGNING.md`)
 - `scripts/` – Build- und Hilfsskripte
 - `assets/` – Icons und Ressourcen
 

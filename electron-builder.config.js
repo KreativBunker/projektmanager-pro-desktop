@@ -1,8 +1,13 @@
 // ============================================================
 // ProjektManager Pro – electron-builder-Konfiguration
 //
-// Als JS-Datei (statt "build" in package.json), damit die macOS-Signierung
-// zur Build-Zeit von den vorhandenen Credentials abhängen kann:
+// Eingebunden über "build.extends" in package.json. Als JS-Datei, damit die
+// macOS-Signierung zur Build-Zeit von den vorhandenen Credentials abhängen
+// kann. Die Datei darf NICHT "electron-builder.js" heißen: Auf Windows sucht
+// cmd.exe zuerst im aktuellen Verzeichnis und kennt .JS als ausführbare
+// Endung – "npx electron-builder" würde dann diese Datei statt des Tools
+// starten (leerer Build, Exit-Code 0).
+//
 //
 //   * Developer-ID vorhanden (CSC_LINK oder CSC_NAME gesetzt):
 //       echte Signatur + Hardened Runtime, Notarisierung via afterSign-Hook.

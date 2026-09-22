@@ -117,7 +117,7 @@ Alternativ können Sie manuell ein 512x512 PNG als `assets/icon.png` ablegen.
 │   └── license.txt    # Lizenztext
 ├── scripts/
 │   └── generate-icons.js  # Icon-Konvertierung
-├── electron-builder.js  # Build-Konfiguration (electron-builder)
+├── electron-builder.config.js  # Build-Konfiguration (electron-builder)
 └── package.json     # Abhängigkeiten
 ```
 
