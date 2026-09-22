@@ -23,7 +23,7 @@ alle Versionen hinweg gleich → „Immer erlauben" hält dauerhaft.
 
 ## Was ist bereits eingerichtet?
 
-- `electron-builder.js` → `mac`: Die Signierung hängt von den Credentials ab,
+- `electron-builder.config.js` → `mac`: Die Signierung hängt von den Credentials ab,
   die zur Build-Zeit gesetzt sind:
   - **`CSC_LINK` oder `CSC_NAME` gesetzt** → Developer-ID-Signatur mit
     `hardenedRuntime: true` (Voraussetzung für Notarisierung), Entitlements

@@ -1,6 +1,6 @@
 {
   "name": "projektmanager-pro",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "description": "ProjektManager Pro – Desktop App",
   "homepage": "https://github.com/KreativBunker/projektmanager-pro-desktop",
   "author": {
@@ -16,6 +16,9 @@
     "build:linux": "electron-builder --linux",
     "build:all": "electron-builder -mwl",
     "postinstall": "electron-builder install-app-deps"
+  },
+  "build": {
+    "extends": "file:./electron-builder.config.js"
   },
   "devDependencies": {
     "@electron/notarize": "^2.5.0",
