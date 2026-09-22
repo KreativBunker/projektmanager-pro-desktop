@@ -23,10 +23,22 @@ alle Versionen hinweg gleich → „Immer erlauben" hält dauerhaft.
 
 ## Was ist bereits eingerichtet?
 
-- `package.json` → `mac`: kein erzwungenes Ad-hoc mehr (`identity` entfernt),
-  `hardenedRuntime: true` (Voraussetzung für Notarisierung), Entitlements
-  hinterlegt. `forceCodeSigning: false` → Builds **ohne** Zertifikat schlagen
-  nicht fehl (ergeben dann nur eine unsignierte App).
+- `electron-builder.js` → `mac`: Die Signierung hängt von den Credentials ab,
+  die zur Build-Zeit gesetzt sind:
+  - **`CSC_LINK` oder `CSC_NAME` gesetzt** → Developer-ID-Signatur mit
+    `hardenedRuntime: true` (Voraussetzung für Notarisierung), Entitlements
+    hinterlegt.
+  - **kein Zertifikat** → **Ad-hoc-Signatur** (`identity: "-"`,
+    `hardenedRuntime: false`). Das ist wichtig: Eine komplett **unsignierte**
+    App meldet macOS auf Apple Silicon als *„ProjektManager Pro ist beschädigt
+    und kann nicht geöffnet werden"* – nicht umgehbar. Ad-hoc ergibt stattdessen
+    nur *„unbekannter Entwickler"*, was per Rechtsklick → Öffnen (bzw.
+    Systemeinstellungen → Datenschutz & Sicherheit → „Trotzdem öffnen")
+    umgangen werden kann.
+
+  Warum nicht einfach fest `identity: "-"`? electron-builder würde dann auch bei
+  vorhandenem Zertifikat nach einer Identität mit `-` im Namen suchen, keine
+  finden und wieder ad-hoc signieren – die Developer-ID käme nie zum Einsatz.
 - `scripts/notarize.js` → `afterSign`-Hook: notarisiert **nur**, wenn die
   Apple-Credentials gesetzt sind, und stapelt die App anschließend.
 - `.github/workflows/build-and-release.yml` → liest die unten genannten Secrets
@@ -76,8 +88,28 @@ export APPLE_TEAM_ID="<team-id>"
 npm run build:mac
 ```
 
-Ohne diese Variablen entsteht weiterhin ein unsignierter (lokal lauffähiger)
-Build.
+Ohne diese Variablen entsteht ein Ad-hoc-signierter Build (lokal lauffähig,
+beim Download auf anderen Macs erscheint „unbekannter Entwickler").
+
+## Fehlerbild „ist beschädigt und kann nicht geöffnet werden"
+
+Erscheint diese Meldung, wurde die App **ohne jede Signatur** ausgeliefert
+(weder Developer-ID noch Ad-hoc). Prüfen mit:
+
+```bash
+codesign -dvvv "/Applications/ProjektManager Pro.app"
+# "code object is not signed at all" → unsigniert (Build-Fehler, s. o.)
+# "Signature=adhoc"                   → Ad-hoc, per Rechtsklick → Öffnen startbar
+# "Authority=Developer ID Application: …" → korrekt signiert
+```
+
+Als Notlösung für ein bereits heruntergeladenes, unsigniertes Build kann die
+App lokal nachsigniert werden:
+
+```bash
+xattr -cr "/Applications/ProjektManager Pro.app"
+codesign --force --deep --sign - "/Applications/ProjektManager Pro.app"
+```
 
 ## Prüfen, ob es funktioniert hat
 
