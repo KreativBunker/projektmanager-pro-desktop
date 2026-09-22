@@ -112,7 +112,9 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS Code Signing – wenn kein Zertifikat vorhanden, Auto-Discovery deaktivieren
+          # macOS Code Signing – wenn kein Zertifikat vorhanden, Auto-Discovery deaktivieren.
+          # electron-builder.js signiert dann Ad-hoc (identity "-"); komplett
+          # unsignierte Apps meldet macOS als "beschädigt".
           CSC_LINK: ${{ secrets.MAC_CERTIFICATE_P12 }}
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.MAC_CERTIFICATE_P12 != '' && 'true' || 'false' }}

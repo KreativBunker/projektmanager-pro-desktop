@@ -1,6 +1,6 @@
 {
   "name": "projektmanager-pro",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "ProjektManager Pro – Desktop App",
   "homepage": "https://github.com/KreativBunker/projektmanager-pro-desktop",
   "author": {
@@ -16,130 +16,6 @@
     "build:linux": "electron-builder --linux",
     "build:all": "electron-builder -mwl",
     "postinstall": "electron-builder install-app-deps"
-  },
-  "build": {
-    "appId": "com.projektmanager.pro",
-    "productName": "ProjektManager Pro",
-    "copyright": "Copyright © 2026 KreativBunker",
-    "artifactName": "ProjektManager-Pro-${version}-${arch}.${ext}",
-    "directories": {
-      "output": "dist",
-      "buildResources": "build"
-    },
-    "files": [
-      "main.js",
-      "preload.js",
-      "shell.html",
-      "shell.js",
-      "shell-preload.js",
-      "setup.html",
-      "setup.js",
-      "config.html",
-      "config.js",
-      "store.js",
-      "credentials.js",
-      "threecx.js",
-      "caller-popup.html",
-      "caller-popup.js",
-      "caller-popup-preload.js",
-      "assets/**/*"
-    ],
-    "mac": {
-      "category": "public.app-category.business",
-      "icon": "build/icon.png",
-      "darkModeSupport": true,
-      "hardenedRuntime": true,
-      "gatekeeperAssess": false,
-      "forceCodeSigning": false,
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.inherit.plist",
-      "notarize": false,
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ]
-    },
-    "afterSign": "scripts/notarize.js",
-    "dmg": {
-      "sign": false,
-      "writeUpdateInfo": false,
-      "background": "build/background.tiff",
-      "title": "ProjektManager-Pro"
-    },
-    "win": {
-      "icon": "build/icon.png",
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64",
-            "ia32"
-          ]
-        },
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        }
-      ]
-    },
-    "nsis": {
-      "artifactName": "ProjektManager-Pro-Setup-${version}-${arch}.${ext}",
-      "oneClick": false,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
-      "allowElevation": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "ProjektManager Pro",
-      "license": "build/license.txt",
-      "language": "1031",
-      "include": "build/installer.nsh",
-      "deleteAppDataOnUninstall": false,
-      "menuCategory": "ProjektManager Pro"
-    },
-    "linux": {
-      "icon": "build/icons",
-      "category": "Office",
-      "desktop": {
-        "entry": {
-          "StartupWMClass": "projektmanager-pro"
-        }
-      },
-      "target": [
-        "AppImage",
-        "deb",
-        "rpm"
-      ]
-    },
-    "deb": {
-      "depends": [
-        "libgtk-3-0",
-        "libnotify4",
-        "libnss3",
-        "libxss1",
-        "libxtst6"
-      ],
-      "category": "Office"
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "KreativBunker",
-      "repo": "projektmanager-pro-desktop"
-    }
   },
   "devDependencies": {
     "@electron/notarize": "^2.5.0",
