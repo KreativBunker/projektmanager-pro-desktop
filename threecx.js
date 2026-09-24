@@ -20,7 +20,7 @@
 // Free-Tier-Grenzen: nur EINGEHEND, nur beim KLINGELN, nur solange die App
 // läuft. Keine Dauer/verpasst/ausgehend (das bräuchte 3CX PRO).
 
-const { BrowserWindow, WebContentsView, session, net, ipcMain, shell, screen } = require('electron');
+const { BrowserWindow, WebContentsView, session, net, ipcMain, shell, screen, systemPreferences } = require('electron');
 const path = require('path');
 const store = require('./store');
 const credentials = require('./credentials');
@@ -407,23 +407,37 @@ function markCallAnswered() {
 
 // ── Eingebettete 3CX-Ansicht ──────────────────────────────────
 
-function configureMediaPermissions(ses, url) {
-  let origin = '';
-  try { origin = new URL(normalizeUrl(url)).origin; } catch (_) {}
+// Mikrofon-Freigabe für den eingebetteten Web-Client. Ohne Freigabe meldet
+// 3CX „Ihr Mikrofon ist gesperrt … keine Anrufe annehmen". Die Partition
+// enthält ausschließlich den 3CX-Web-Client, daher wird nicht zusätzlich auf
+// den Origin geprüft (3CX leitet u. U. auf eine andere Subdomain weiter).
+function isMicrophoneAllowed() {
+  return store.get('threecxMicrophone') !== false;
+}
 
-  // Mikrofon nur erlauben, wenn Softphone-Audio aktiviert ist (vorbereitet, Default aus).
+function configureMediaPermissions(ses) {
   ses.setPermissionRequestHandler((_wc, permission, callback) => {
-    const allowMedia = !!store.get('threecxAllowMedia');
-    if (allowMedia && (permission === 'media' || permission === 'audioCapture')) {
+    if (isMicrophoneAllowed() && (permission === 'media' || permission === 'speaker-selection')) {
       return callback(true);
     }
     return callback(false);
   });
-  ses.setPermissionCheckHandler((_wc, permission, requestingOrigin) => {
-    const allowMedia = !!store.get('threecxAllowMedia');
-    if (allowMedia && permission === 'media' && requestingOrigin === origin) return true;
+  ses.setPermissionCheckHandler((_wc, permission) => {
+    if (isMicrophoneAllowed() && (permission === 'media' || permission === 'speaker-selection')) return true;
     return false;
   });
+}
+
+// macOS: Die App braucht zusätzlich die System-Freigabe (Datenschutz →
+// Mikrofon). Beim ersten Mal fragt macOS nach; wurde sie verweigert, bleibt
+// das Mikrofon gesperrt, bis sie in den Systemeinstellungen erteilt wird.
+function requestSystemMicrophoneAccess() {
+  if (process.platform !== 'darwin' || !isMicrophoneAllowed()) return;
+  try {
+    if (systemPreferences.getMediaAccessStatus('microphone') === 'not-determined') {
+      systemPreferences.askForMediaAccess('microphone').catch(() => {});
+    }
+  } catch (_) {}
 }
 
 function attachInterceptors(wc) {
@@ -794,7 +808,8 @@ function createPhoneView() {
   if (!win || win.isDestroyed()) return null;
 
   const ses = session.fromPartition(PARTITION_3CX);
-  configureMediaPermissions(ses, url);
+  configureMediaPermissions(ses);
+  requestSystemMicrophoneAccess();
 
   phoneView = new WebContentsView({
     webPreferences: {
