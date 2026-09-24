@@ -22,7 +22,7 @@ const defaults = {
   threecxUrl: '',          // URL des 3CX-Web-Clients
   threecxApiKey: '',       // API-Key für die WordPress-REST-API
   threecxPopupSeconds: 60, // Auto-Ausblenden des Anrufer-Popups (Minimum 60 s)
-  threecxAllowMedia: false // Softphone-Audio (Mikrofon) erlauben – vorbereitet, Default aus
+  threecxMicrophone: true // Mikrofon für den 3CX-Web-Client freigeben (ohne kann 3CX keine Anrufe annehmen)
 };
 
 function load() {

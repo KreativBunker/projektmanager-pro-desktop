@@ -37,7 +37,7 @@
   elThreecxUrl.value = config.threecxUrl || '';
   elThreecxApiKey.value = config.threecxApiKey || '';
   elThreecxPopupSeconds.value = config.threecxPopupSeconds != null ? String(config.threecxPopupSeconds) : '60';
-  elThreecxAllowMedia.checked = !!config.threecxAllowMedia;
+  elThreecxAllowMedia.checked = config.threecxMicrophone !== false;
 
   function refreshThreecxFields() {
     elThreecxFields.style.display = elThreecxEnabled.checked ? 'block' : 'none';
@@ -119,7 +119,7 @@
         threecxUrl: elThreecxUrl.value.trim(),
         threecxApiKey: elThreecxApiKey.value.trim(),
         threecxPopupSeconds: popupSecs,
-        threecxAllowMedia: elThreecxAllowMedia.checked
+        threecxMicrophone: elThreecxAllowMedia.checked
       });
       elStatus.textContent = 'Gespeichert! App wird geladen…';
       elStatus.className = 'status success';

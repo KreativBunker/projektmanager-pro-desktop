@@ -143,6 +143,9 @@ module.exports = {
     "forceCodeSigning": false,
     "entitlements": "build/entitlements.mac.plist",
     "entitlementsInherit": "build/entitlements.mac.inherit.plist",
+    "extendInfo": {
+      "NSMicrophoneUsageDescription": "ProjektManager Pro benötigt das Mikrofon, um über den integrierten 3CX-Web-Client zu telefonieren."
+    },
     "target": [
       {
         "target": "dmg",
