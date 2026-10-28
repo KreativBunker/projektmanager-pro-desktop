@@ -9,6 +9,10 @@ contextBridge.exposeInMainWorld('callerPopup', {
   openUrl: (url) => ipcRenderer.invoke('threecx:open-url', url),
   // Speichert Notiz/Name/Projekt zu einem Anruf.
   saveNote: (data) => ipcRenderer.invoke('threecx:save-note', data),
+  // Kundensuche (Firma/Person) für „Als Ansprechpartner speichern“.
+  searchCustomers: (q) => ipcRenderer.invoke('threecx:search-customers', q),
+  // Hinterlegt die Anrufernummer als Ansprechpartner beim gewählten Kunden.
+  addContact: (data) => ipcRenderer.invoke('threecx:add-contact', data),
   // Bricht das automatische Ausblenden ab (sobald der Nutzer interagiert).
   keepOpen: () => ipcRenderer.invoke('threecx:keep-open'),
   // Schließt (versteckt) das Popup.

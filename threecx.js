@@ -973,6 +973,29 @@ function init(injected) {
     }
   });
 
+  ipcMain.handle('threecx:search-customers', async (_e, q) => {
+    try {
+      const res = await apiRequest('GET', '/customer-search', { q: String(q || '') });
+      return { ok: true, customers: (res && Array.isArray(res.customers)) ? res.customers : [] };
+    } catch (err) {
+      console.warn('[3cx] Kundensuche fehlgeschlagen:', err.message);
+      return { ok: false, customers: [], error: err.message };
+    }
+  });
+
+  // Anrufernummer als Ansprechpartner beim Kunden hinterlegen. Bewusst ohne
+  // Wiederholung (apiRequestOnce), damit kein Kontakt doppelt angelegt wird.
+  ipcMain.handle('threecx:add-contact', async (_e, payload) => {
+    try {
+      const res = await apiRequestOnce('POST', '/caller-contact', null, Object.assign({}, payload || {}));
+      if (res && res.saved) return { ok: true, match: res.match || null };
+      return { ok: false, error: (res && (res.error || res.message)) || 'Unbekannter Fehler' };
+    } catch (err) {
+      console.warn('[3cx] Ansprechpartner speichern fehlgeschlagen:', err.message);
+      return { ok: false, error: err.message };
+    }
+  });
+
   ipcMain.handle('threecx:get-sentinel-url', () => {
     return `http://${SENTINEL_HOST}${SENTINEL_PATH}?phoneNumber=%CallerNumber%&displayName=%CallerDisplayName%`;
   });
